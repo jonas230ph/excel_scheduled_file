@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 from pathlib import Path
 
 from openpyxl import Workbook
+from openpyxl.chart import LineChart, Reference
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -217,6 +218,15 @@ def calc_coverage_formula(row: int, column_letter: str) -> str:
     )
 
 
+def requirement_formula(column_letter: str, row: int) -> str:
+    return (
+        f'=IF(COUNTIFS(tblRequirements[OperationalDate],$E$2,'
+        f'tblRequirements[IntervalStart],{column_letter}${row})=0,"",'
+        f"SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,"
+        f"tblRequirements[IntervalStart],{column_letter}${row}))"
+    )
+
+
 def selected_schedule_formula(field_name: str, row: int) -> str:
     relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
     return (
@@ -266,14 +276,14 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         ws.cell(
             row=6,
             column=column,
-            value=f'=IFNA(SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,tblRequirements[IntervalStart],{column_letter}$1),"")',
+            value=requirement_formula(column_letter, 1),
         )
         ws.cell(row=7, column=column, value=f'=IF({column_letter}$6="","MissingRequirement",ROUND({column_letter}$5-{column_letter}$6,2))')
         ws.cell(row=SUMMARY_SCHEDULED_ROW, column=column, value=f"=SUM(Calc_Engine!{column_letter}${ROSTER_START_ROW}:{column_letter}${ROSTER_END_ROW})")
         ws.cell(
             row=SUMMARY_REQUIRED_ROW,
             column=column,
-            value=f'=IFNA(SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,tblRequirements[IntervalStart],{column_letter}$1),"")',
+            value=requirement_formula(column_letter, 1),
         )
         ws.cell(
             row=SUMMARY_VARIANCE_ROW,
@@ -285,6 +295,30 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         )
 
     add_conditional_formatting(ws)
+
+
+def populate_summary_dashboard(wb: Workbook) -> None:
+    ws = wb["Summary_Dashboard"]
+    ws.append(["Interval", "Scheduled Productive", "Required", "Over/Under"])
+    matrix = wb["Schedule_Matrix"]
+    for index, column in enumerate(range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1), start=2):
+        column_letter = matrix.cell(row=1, column=column).column_letter
+        ws.cell(row=index, column=1, value=f"=Schedule_Matrix!{column_letter}$1")
+        ws.cell(row=index, column=2, value=f"=Schedule_Matrix!{column_letter}${SUMMARY_SCHEDULED_ROW}")
+        ws.cell(row=index, column=3, value=f"=Schedule_Matrix!{column_letter}${SUMMARY_REQUIRED_ROW}")
+        ws.cell(row=index, column=4, value=f"=Schedule_Matrix!{column_letter}${SUMMARY_VARIANCE_ROW}")
+
+    chart = LineChart()
+    chart.title = "Selected-Day Net Staffing Variance"
+    chart.y_axis.title = "Agents"
+    chart.x_axis.title = "Interval"
+    chart.height = 8
+    chart.width = 24
+    data = Reference(ws, min_col=4, min_row=1, max_row=49)
+    categories = Reference(ws, min_col=1, min_row=2, max_row=49)
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(categories)
+    ws.add_chart(chart, "F2")
 
 
 def add_conditional_formatting(ws) -> None:
@@ -358,6 +392,7 @@ def format_workbook(wb: Workbook) -> None:
 
     matrix = wb["Schedule_Matrix"]
     calc = wb["Calc_Engine"]
+    dashboard = wb["Summary_Dashboard"]
     for ws in [matrix, calc]:
         for column in range(1, 8):
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 18
@@ -380,6 +415,10 @@ def format_workbook(wb: Workbook) -> None:
             calc.cell(row=row, column=column).number_format = "0.00"
         for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
             calc.cell(row=row, column=column).number_format = "0.00"
+    for row in range(2, 50):
+        dashboard.cell(row=row, column=1).number_format = "hh:mm"
+        for column in range(2, 5):
+            dashboard.cell(row=row, column=column).number_format = "0.00"
     calc.sheet_state = "hidden"
 
 
@@ -389,6 +428,7 @@ def build() -> Workbook:
     populate_requirements(wb["Staffing_Requirements"])
     populate_schedule_data(wb["Schedule_Data"])
     populate_schedule_matrix(wb)
+    populate_summary_dashboard(wb)
     populate_test_cases(wb["TestCases"])
     setup_names_and_validation(wb)
     format_workbook(wb)

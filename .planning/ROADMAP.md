@@ -25,7 +25,7 @@
 
 ## Phase 2: Requirements and Calculation Engine
 
-**Status:** Pending
+**Status:** Complete
 
 **Goal:** Build the date/interval requirement model and overnight-safe calculation engine.
 
@@ -44,7 +44,7 @@
 
 ## Phase 3: Live Daily Schedule Matrix and Summary
 
-**Status:** Pending
+**Status:** Complete
 
 **Goal:** Render the selected operational day in `Schedule_Matrix` and produce interval staffing variance.
 
@@ -64,7 +64,7 @@
 
 ## Phase 4: Validation, Conditional Formatting, and Performance Hardening
 
-**Status:** Pending
+**Status:** In Progress
 
 **Goal:** Make data quality problems visible and keep recalculation responsive.
 

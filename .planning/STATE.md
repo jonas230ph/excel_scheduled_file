@@ -5,7 +5,7 @@
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** The selected-day staffing variance must be fast, visible, and trustworthy after every schedule edit.
-**Current focus:** Phase 1 complete - verify and prepare Phase 2 calculation engine
+**Current focus:** Phase 4 validation warnings and Phase 5 workbook-native test harness
 
 ## Workflow Preferences
 
@@ -29,10 +29,12 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 ## Latest Completion
 
 - Phase 1 workbook skeleton and config architecture implemented in `feature/wfm-workbook-engine`.
+- Phase 2 requirements and calculation engine implemented, including Sheets-compatible staffed headcount lookup and missing-requirement handling.
+- Phase 3 live daily matrix and summary dashboard implemented, including selected-day net variance chart.
 - Generated workbook: `excel schedule/wfm_scheduling_matrix.xlsx`
 - Structural verifier: `scripts/verify_wfm_workbook.py`
-- Latest verification: unit tests, workbook generation, and workbook verifier passing.
+- Latest verification: unit tests, workbook generation, workbook verifier, and live Google Sheets readback passing.
 
 ## Next Command
 
-Run `$gsd-verify-work 1` for a formal Phase 1 audit, or `$gsd-plan-phase 2` to plan the requirements and calculation engine.
+Run `$gsd-plan-phase 4` for validation warning states, or `$gsd-plan-phase 5` for workbook-native test cases.

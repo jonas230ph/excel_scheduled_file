@@ -39,6 +39,7 @@ SCHEDULE_HEADERS = [
 ]
 MATRIX_HEADERS = ["EmployeeID", "Name", "ContractualHours", "CurrentShift", "TargetDaySelect", "ShiftStart", "ShiftEnd"]
 TEST_HEADERS = ["TestID", "Scenario", "Input", "Expected", "Actual", "Pass", "Requirement", "Notes"]
+DASHBOARD_HEADERS = ["Interval", "Scheduled Productive", "Required", "Over/Under"]
 
 
 def row_values(ws, row: int, start_col: int, end_col: int) -> list:
@@ -118,9 +119,13 @@ def assert_schedule_matrix(ws) -> None:
     assert ws["G202"].value == "=Calc_Engine!G202"
     assert ws["H5"].value == "=SUM(Calc_Engine!H$8:H$257)"
     assert ws["H5"].number_format == "0.00"
+    assert "COUNTIFS(tblRequirements[OperationalDate],$E$2" in ws["H6"].value
+    assert ')=0,"",SUMIFS(tblRequirements[RequiredHeadcount]' in ws["H6"].value
     assert ws["H7"].value == '=IF(H$6="","MissingRequirement",ROUND(H$5-H$6,2))'
     assert ws["H260"].value == "=SUM(Calc_Engine!H$8:H$257)"
     assert ws["H260"].number_format == "0.00"
+    assert "COUNTIFS(tblRequirements[OperationalDate],$E$2" in ws["H261"].value
+    assert ')=0,"",SUMIFS(tblRequirements[RequiredHeadcount]' in ws["H261"].value
     assert ws["H262"].value == '=IF(H$261="","MissingRequirement",ROUND(H$260-H$261,2))'
     assert ws["H262"].number_format == "0.00"
     assert ws["A8"].value == "=Calc_Engine!A8"
@@ -146,6 +151,15 @@ def assert_test_cases(ws) -> None:
     assert len(populated) >= 6, f"Expected at least 6 test case rows, found {len(populated)}"
 
 
+def assert_summary_dashboard(ws) -> None:
+    assert row_values(ws, 1, 1, 4) == DASHBOARD_HEADERS
+    assert ws["A2"].value == "=Schedule_Matrix!H$1"
+    assert ws["B2"].value == "=Schedule_Matrix!H$260"
+    assert ws["C2"].value == "=Schedule_Matrix!H$261"
+    assert ws["D2"].value == "=Schedule_Matrix!H$262"
+    assert len(ws._charts) == 1, "Summary_Dashboard must contain one net staffing chart"
+
+
 def main() -> None:
     assert WORKBOOK_PATH.exists(), f"Workbook missing: {WORKBOOK_PATH}"
     assert WORKBOOK_PATH.suffix == ".xlsx", "Workbook must be a macro-free .xlsx file"
@@ -157,6 +171,7 @@ def main() -> None:
     assert_schedule_data(wb["Schedule_Data"])
     assert_calc_engine(wb["Calc_Engine"])
     assert_schedule_matrix(wb["Schedule_Matrix"])
+    assert_summary_dashboard(wb["Summary_Dashboard"])
     assert_test_cases(wb["TestCases"])
     assert_tables(wb)
     assert_defined_names(wb)

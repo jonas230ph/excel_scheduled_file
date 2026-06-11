@@ -12,7 +12,7 @@ from scripts.interval_engine import (
     interval_productive_fraction,
     row_interval_value,
 )
-from scripts.build_wfm_workbook import calc_coverage_formula
+from scripts.build_wfm_workbook import calc_coverage_formula, requirement_formula
 
 
 PRODUCTIVE_CODES = {"OWD", "OT"}
@@ -116,6 +116,13 @@ class IntervalAggregationTests(unittest.TestCase):
         self.assertNotIn("XLOOKUP(code,UPPER(", formula)
         self.assertIn("INDEX(tblActivityCodes[CountsAsStaffed]", formula)
         self.assertIn("MATCH(code,tblActivityCodes[Code],0)", formula)
+
+    def test_generated_requirement_formula_distinguishes_missing_from_zero(self) -> None:
+        formula = requirement_formula("X", 1)
+
+        self.assertIn("COUNTIFS(tblRequirements[OperationalDate],$E$2", formula)
+        self.assertIn('=0,""', formula)
+        self.assertIn("SUMIFS(tblRequirements[RequiredHeadcount]", formula)
 
 
 if __name__ == "__main__":

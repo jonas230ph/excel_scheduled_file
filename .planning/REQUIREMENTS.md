@@ -7,44 +7,44 @@
 
 ### Workbook Structure
 
-- [ ] **STRUCT-01**: Workbook includes `Config_Settings`, `Staffing_Requirements`, and `Schedule_Matrix` tabs.
-- [ ] **STRUCT-02**: Workbook includes a hidden or protected `Calc_Engine` layer for schedule normalization, interval overlap, staffed flags, and validation states.
-- [ ] **STRUCT-03**: Workbook includes a `Schedule_Data` table for normalized weekly schedule records.
-- [ ] **STRUCT-04**: Workbook includes a `TestCases` sheet with expected vs actual formula checks.
-- [ ] **STRUCT-05**: Workbook may include `Summary_Dashboard` for a cleaner chart view, sourced only from tested summaries.
+- [x] **STRUCT-01**: Workbook includes `Config_Settings`, `Staffing_Requirements`, and `Schedule_Matrix` tabs.
+- [x] **STRUCT-02**: Workbook includes a hidden or protected `Calc_Engine` layer for schedule normalization, interval overlap, staffed flags, and validation states.
+- [x] **STRUCT-03**: Workbook includes a `Schedule_Data` table for normalized weekly schedule records.
+- [x] **STRUCT-04**: Workbook includes a `TestCases` sheet with expected vs actual formula checks.
+- [x] **STRUCT-05**: Workbook may include `Summary_Dashboard` for a cleaner chart view, sourced only from tested summaries.
 
 ### Config Settings
 
-- [ ] **CONFIG-01**: `Config_Settings!A1:H40` stores active activity code definitions.
-- [ ] **CONFIG-02**: Activity code rules include `Code`, `DisplayLabel`, `IsActive`, `CountsAsStaffed`, `IsPaid`, `Category`, `NumericValue`, and `ColorGroup`.
-- [ ] **CONFIG-03**: `Config_Settings!J1:K30` stores numeric parameters including interval minutes, intervals per day, day start time, and tolerance.
-- [ ] **CONFIG-04**: `Config_Settings!M1:Q20` stores threshold and color state definitions for conditional formatting.
-- [ ] **CONFIG-05**: Active activity codes are exposed through a named range for dropdown validation.
+- [x] **CONFIG-01**: `Config_Settings!A1:H40` stores active activity code definitions.
+- [x] **CONFIG-02**: Activity code rules include `Code`, `DisplayLabel`, `IsActive`, `CountsAsStaffed`, `IsPaid`, `Category`, `NumericValue`, and `ColorGroup`.
+- [x] **CONFIG-03**: `Config_Settings!J1:K30` stores numeric parameters including interval minutes, intervals per day, day start time, and tolerance.
+- [x] **CONFIG-04**: `Config_Settings!M1:Q20` stores threshold and color state definitions for conditional formatting.
+- [x] **CONFIG-05**: Active activity codes are exposed through a named range for dropdown validation.
 
 ### Staffing Requirements
 
-- [ ] **REQ-01**: `Staffing_Requirements` stores requirements by `OperationalDate`, `IntervalStart`, and `RequiredHeadcount`.
-- [ ] **REQ-02**: Requirements support all 48 half-hour intervals per operational day.
-- [ ] **REQ-03**: Requirements do not split by channel, queue, skill, team, site, or location in Phase 1.
-- [ ] **REQ-04**: Blank or missing requirements produce a visible missing-requirement state instead of silently treating demand as zero.
+- [x] **REQ-01**: `Staffing_Requirements` stores requirements by `OperationalDate`, `IntervalStart`, and `RequiredHeadcount`.
+- [x] **REQ-02**: Requirements support all 48 half-hour intervals per operational day.
+- [x] **REQ-03**: Requirements do not split by channel, queue, skill, team, site, or location in Phase 1.
+- [x] **REQ-04**: Blank or missing requirements produce a visible missing-requirement state instead of silently treating demand as zero.
 
 ### Schedule Matrix
 
-- [ ] **MATRIX-01**: `Schedule_Matrix!A:G` stores visible metadata columns: Employee ID, Name, Contractual Hours, Current Shift, Target Day Select, Shift Start, Shift End.
-- [ ] **MATRIX-02**: `Schedule_Matrix!H:BC` maps exactly 48 half-hour intervals from `00:00` through `23:30`.
-- [ ] **MATRIX-03**: The matrix renders one selected operational day at a time.
-- [ ] **MATRIX-04**: The matrix displays visible activity states for productive and nonproductive activity codes.
-- [ ] **MATRIX-05**: The matrix summary rows include scheduled productive headcount, required headcount, and over/under variance by interval.
-- [ ] **MATRIX-06**: The matrix supports a clean net staffing chart based on the selected day summary.
+- [x] **MATRIX-01**: `Schedule_Matrix!A:G` stores visible metadata columns: Employee ID, Name, Contractual Hours, Current Shift, Target Day Select, Shift Start, Shift End.
+- [x] **MATRIX-02**: `Schedule_Matrix!H:BC` maps exactly 48 half-hour intervals from `00:00` through `23:30`.
+- [x] **MATRIX-03**: The matrix renders one selected operational day at a time.
+- [x] **MATRIX-04**: The matrix displays visible activity states for productive and nonproductive activity codes.
+- [x] **MATRIX-05**: The matrix summary rows include scheduled productive headcount, required headcount, and over/under variance by interval.
+- [x] **MATRIX-06**: The matrix supports a clean net staffing chart based on the selected day summary.
 
 ### Calculation Engine
 
-- [ ] **CALC-01**: Schedule start and end values are normalized into real datetime windows.
-- [ ] **CALC-02**: Overnight shifts crossing midnight are counted correctly for the selected operational day.
-- [ ] **CALC-03**: Interval overlap uses `IntervalStart < ScheduleEnd` and `IntervalEnd > ScheduleStart`.
-- [ ] **CALC-04**: Staffed count uses activity lookup rules rather than hardcoded code checks.
-- [ ] **CALC-05**: Formula logic uses named ranges or named formulas for key calculations.
-- [ ] **CALC-06**: Core calculations avoid volatile functions where possible.
+- [x] **CALC-01**: Schedule start and end values are normalized into real datetime windows.
+- [x] **CALC-02**: Overnight shifts crossing midnight are counted correctly for the selected operational day.
+- [x] **CALC-03**: Interval overlap uses `IntervalStart < ScheduleEnd` and `IntervalEnd > ScheduleStart`.
+- [x] **CALC-04**: Staffed count uses activity lookup rules rather than hardcoded code checks.
+- [x] **CALC-05**: Formula logic uses named ranges or named formulas for key calculations.
+- [x] **CALC-06**: Core calculations avoid volatile functions where possible.
 
 ### Validation and Conditional Formatting
 
@@ -106,27 +106,28 @@
 | STRUCT-02 | Phase 1 | Complete |
 | STRUCT-03 | Phase 1 | Complete |
 | STRUCT-04 | Phase 1 | Complete |
+| STRUCT-05 | Phase 3 | Complete |
 | CONFIG-01 | Phase 1 | Complete |
 | CONFIG-02 | Phase 1 | Complete |
 | CONFIG-03 | Phase 1 | Complete |
 | CONFIG-04 | Phase 1 | Complete |
 | CONFIG-05 | Phase 1 | Complete |
-| REQ-01 | Phase 2 | Pending |
-| REQ-02 | Phase 2 | Pending |
-| REQ-03 | Phase 2 | Pending |
-| REQ-04 | Phase 2 | Pending |
-| MATRIX-01 | Phase 3 | Pending |
-| MATRIX-02 | Phase 3 | Pending |
-| MATRIX-03 | Phase 3 | Pending |
-| MATRIX-04 | Phase 3 | Pending |
-| MATRIX-05 | Phase 3 | Pending |
-| MATRIX-06 | Phase 3 | Pending |
-| CALC-01 | Phase 2 | Pending |
-| CALC-02 | Phase 2 | Pending |
-| CALC-03 | Phase 2 | Pending |
-| CALC-04 | Phase 2 | Pending |
-| CALC-05 | Phase 2 | Pending |
-| CALC-06 | Phase 4 | Pending |
+| REQ-01 | Phase 2 | Complete |
+| REQ-02 | Phase 2 | Complete |
+| REQ-03 | Phase 2 | Complete |
+| REQ-04 | Phase 2 | Complete |
+| MATRIX-01 | Phase 3 | Complete |
+| MATRIX-02 | Phase 3 | Complete |
+| MATRIX-03 | Phase 3 | Complete |
+| MATRIX-04 | Phase 3 | Complete |
+| MATRIX-05 | Phase 3 | Complete |
+| MATRIX-06 | Phase 3 | Complete |
+| CALC-01 | Phase 2 | Complete |
+| CALC-02 | Phase 2 | Complete |
+| CALC-03 | Phase 2 | Complete |
+| CALC-04 | Phase 2 | Complete |
+| CALC-05 | Phase 2 | Complete |
+| CALC-06 | Phase 4 | Complete |
 | VALID-01 | Phase 4 | Pending |
 | VALID-02 | Phase 4 | Pending |
 | VALID-03 | Phase 4 | Pending |
@@ -141,10 +142,12 @@
 | TEST-07 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 37 total
-- Mapped to phases: 37
+- v1 requirements: 38 total
+- Mapped to phases: 38
 - Unmapped: 0
+- Completed: 26
+- Remaining pending: 12
 
 ---
 *Requirements defined: 2026-06-11*
-*Last updated: 2026-06-11 after initialization*
+*Last updated: 2026-06-11 after Google Sheets compatibility and dashboard completion*

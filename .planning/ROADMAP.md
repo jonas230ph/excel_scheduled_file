@@ -6,6 +6,8 @@
 
 ## Phase 1: Workbook Skeleton and Config Architecture
 
+**Status:** Complete
+
 **Goal:** Create the workbook tab contract, anchors, named range plan, and configurable activity/threshold tables.
 
 **Requirements:** STRUCT-01, STRUCT-02, STRUCT-03, STRUCT-04, CONFIG-01, CONFIG-02, CONFIG-03, CONFIG-04, CONFIG-05
@@ -23,6 +25,8 @@
 
 ## Phase 2: Requirements and Calculation Engine
 
+**Status:** Pending
+
 **Goal:** Build the date/interval requirement model and overnight-safe calculation engine.
 
 **Requirements:** REQ-01, REQ-02, REQ-03, REQ-04, CALC-01, CALC-02, CALC-03, CALC-04, CALC-05
@@ -39,6 +43,8 @@
 - Productive and nonproductive activity states remain visually distinct.
 
 ## Phase 3: Live Daily Schedule Matrix and Summary
+
+**Status:** Pending
 
 **Goal:** Render the selected operational day in `Schedule_Matrix` and produce interval staffing variance.
 
@@ -58,6 +64,8 @@
 
 ## Phase 4: Validation, Conditional Formatting, and Performance Hardening
 
+**Status:** Pending
+
 **Goal:** Make data quality problems visible and keep recalculation responsive.
 
 **Requirements:** CALC-06, VALID-01, VALID-02, VALID-03, VALID-04, VALID-05
@@ -73,6 +81,8 @@
 - Workbook remains scoped to the selected day rather than recalculating full-week matrix output.
 
 ## Phase 5: Test Harness and Release Readiness
+
+**Status:** Pending
 
 **Goal:** Add in-workbook tests that prove the formula engine works before the workbook is considered ready.
 

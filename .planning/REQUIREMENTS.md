@@ -102,15 +102,15 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STRUCT-01 | Phase 1 | Pending |
-| STRUCT-02 | Phase 1 | Pending |
-| STRUCT-03 | Phase 1 | Pending |
-| STRUCT-04 | Phase 1 | Pending |
-| CONFIG-01 | Phase 1 | Pending |
-| CONFIG-02 | Phase 1 | Pending |
-| CONFIG-03 | Phase 1 | Pending |
-| CONFIG-04 | Phase 1 | Pending |
-| CONFIG-05 | Phase 1 | Pending |
+| STRUCT-01 | Phase 1 | Complete |
+| STRUCT-02 | Phase 1 | Complete |
+| STRUCT-03 | Phase 1 | Complete |
+| STRUCT-04 | Phase 1 | Complete |
+| CONFIG-01 | Phase 1 | Complete |
+| CONFIG-02 | Phase 1 | Complete |
+| CONFIG-03 | Phase 1 | Complete |
+| CONFIG-04 | Phase 1 | Complete |
+| CONFIG-05 | Phase 1 | Complete |
 | REQ-01 | Phase 2 | Pending |
 | REQ-02 | Phase 2 | Pending |
 | REQ-03 | Phase 2 | Pending |

@@ -25,7 +25,7 @@ Use a single generation script in `scripts/build_wfm_workbook.py` that:
 5. Creates Excel tables and named ranges.
 6. Adds data validation for active activity codes and selected date.
 7. Adds interval headers from `00:00` through `23:30` in `Schedule_Matrix!H1:BC1`.
-8. Adds summary rows for scheduled, required, and over/under in `H202:BC204`.
+8. Adds summary rows for scheduled, required, and over/under in `H260:BC262`.
 9. Adds conditional formatting placeholders for under/exact/over/invalid/missing/nonproductive states.
 10. Saves the workbook to `excel schedule/wfm_scheduling_matrix.xlsx`.
 
@@ -40,7 +40,7 @@ Use a single generation script in `scripts/build_wfm_workbook.py` that:
 | `Schedule_Data` | `A1:K1000` | Weekly-normalized schedule source |
 | `Schedule_Matrix` | `A1:G200` | Employee metadata and selected-day controls |
 | `Schedule_Matrix` | `H1:BC1` | 48 interval headers |
-| `Schedule_Matrix` | `H202:BC204` | Scheduled, required, over/under rows |
+| `Schedule_Matrix` | `H260:BC262` | Scheduled, required, over/under rows |
 | `Calc_Engine` | `A1:BC250` | Protected helper logic |
 | `TestCases` | `A1:H100` | Expected vs actual workbook tests |
 
@@ -61,5 +61,5 @@ Phase 1 validation should prove the workbook skeleton exists, not the final WFM 
 - `Schedule_Matrix!H1:BC1` contains exactly 48 intervals.
 - `Config_Settings` contains activity codes with `CountsAsStaffed` values.
 - Named ranges exist for activity codes, parameters, requirements, schedule data, matrix, and test cases.
-- Summary rows exist at `H202:BC204`.
+- Summary rows exist at `H260:BC262`.
 - Conditional formatting ranges exist for matrix and summary regions.

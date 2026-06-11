@@ -19,7 +19,7 @@ Complete.
   - `Summary_Dashboard`
   - `TestCases`
 - Populated `Config_Settings` with activity code, parameter, and threshold tables.
-- Populated `Schedule_Matrix` with metadata headers, 48 interval headers, visible matrix formulas, compact row-5 summary formulas, and production row-202 summary formulas.
+- Populated `Schedule_Matrix` with metadata headers, 48 interval headers, visible matrix formulas, compact row-5 summary formulas, and production row-260 summary formulas below the 250-row roster body.
 - Added workbook tables, named ranges, activity-code validation, conditional formatting, hidden `Calc_Engine`, and placeholder workbook test cases.
 
 ## Verification
@@ -44,4 +44,3 @@ Results:
 - `Calc_Engine` is hidden and stores numeric coverage formulas.
 - `Schedule_Matrix` remains readable and displays activity tags separately from numeric productive coverage.
 - The formula logic is still intentionally MVP-scoped; deeper validation and chart polish remain later roadmap phases.
-

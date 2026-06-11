@@ -131,11 +131,11 @@ Suggested anchors:
 |-------|---------|
 | `A1:G1` | Metadata headers |
 | `H1:BC1` | 48 half-hour interval headers |
-| `A2:G200` | Employee schedule metadata rows |
-| `H2:BC200` | Visible activity/coverage grid |
-| `H202:BC202` | Scheduled productive headcount summary |
-| `H203:BC203` | Required headcount summary |
-| `H204:BC204` | Over/Under variance summary |
+| `A8:G257` | Employee schedule metadata rows for up to 250 selected-day records |
+| `H8:BC257` | Visible activity/coverage grid |
+| `H260:BC260` | Scheduled productive headcount summary |
+| `H261:BC261` | Required headcount summary |
+| `H262:BC262` | Over/Under variance summary |
 | `H206:BC220` | Net staffing chart source or helper rows |
 
 Metadata columns:

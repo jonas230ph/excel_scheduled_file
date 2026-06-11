@@ -65,6 +65,7 @@ def assert_defined_names(wb) -> None:
     assert not missing, f"Missing workbook defined names: {sorted(missing)}"
     assert wb.defined_names["SelectedDate"].attr_text == "'Schedule_Matrix'!$E$2"
     assert wb.defined_names["IntervalHeaders"].attr_text == "'Schedule_Matrix'!$H$1:$BC$1"
+    assert wb.defined_names["tblDailyMatrix"].attr_text == "'Schedule_Matrix'!$A$1:$BC$257"
 
 
 def assert_config(ws) -> None:
@@ -89,7 +90,13 @@ def assert_requirements(ws) -> None:
 def assert_schedule_data(ws) -> None:
     assert row_values(ws, 1, 1, 11) == SCHEDULE_HEADERS
     shift_ends = [ws.cell(row=row, column=5).value for row in range(2, 5)]
-    assert any("2026-06-12" in str(value) for value in shift_ends), "Missing overnight sample row"
+    assert any(
+        hasattr(value, "date") and value.date().isoformat() == "2026-06-12"
+        for value in shift_ends
+    ), "Missing overnight sample row"
+    for coordinate in ["D2", "E2", "D3", "E3", "D4", "E4"]:
+        assert ws[coordinate].data_type == "d", f"{coordinate} must be a typed Excel datetime"
+        assert ws[coordinate].number_format == "yyyy-mm-dd hh:mm", f"{coordinate} must use datetime format"
     validations = list(ws.data_validations.dataValidation)
     assert validations, "Missing activity-code data validation"
     assert any("F2:F1000" in str(validation.sqref) for validation in validations), "Activity validation not applied to F2:F1000"
@@ -105,12 +112,28 @@ def assert_schedule_matrix(ws) -> None:
     assert ws["G5"].value == "Scheduled Productive"
     assert ws["G6"].value == "Required"
     assert ws["G7"].value == "Over/Under"
-    assert ws["G202"].value == "Scheduled Productive"
-    assert ws["G203"].value == "Required"
-    assert ws["G204"].value == "Over/Under"
-    assert ws["H5"].value == "=SUM(Calc_Engine!H$8:H$200)"
+    assert ws["G260"].value == "Scheduled Productive"
+    assert ws["G261"].value == "Required"
+    assert ws["G262"].value == "Over/Under"
+    assert ws["G202"].value == "=Calc_Engine!G202"
+    assert ws["H5"].value == "=SUM(Calc_Engine!H$8:H$257)"
     assert ws["H7"].value == '=IF(H$6="","MissingRequirement",H$5-H$6)'
+    assert ws["H260"].value == "=SUM(Calc_Engine!H$8:H$257)"
+    assert ws["H262"].value == '=IF(H$261="","MissingRequirement",H$260-H$261)'
+    assert ws["A8"].value == "=Calc_Engine!A8"
+    assert ws["F8"].value == "=Calc_Engine!F8"
+    assert ws["G8"].value == "=Calc_Engine!G8"
+    cf_ranges = {str(item.sqref) for item in ws.conditional_formatting}
+    assert "H8:BC257" in cf_ranges, f"Missing 250-row body conditional formatting: {cf_ranges}"
+    assert "H262:BC262" in cf_ranges, f"Missing moved variance conditional formatting: {cf_ranges}"
     assert len(ws.conditional_formatting) > 0, "Missing conditional formatting"
+
+
+def assert_calc_engine(ws) -> None:
+    assert ws["A8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[EmployeeID]")
+    assert ws["D8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ActivityCode]")
+    assert ws["F8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ShiftStart]")
+    assert ws["H8"].value.startswith("=LET(")
 
 
 def assert_test_cases(ws) -> None:
@@ -128,6 +151,7 @@ def main() -> None:
     assert_config(wb["Config_Settings"])
     assert_requirements(wb["Staffing_Requirements"])
     assert_schedule_data(wb["Schedule_Data"])
+    assert_calc_engine(wb["Calc_Engine"])
     assert_schedule_matrix(wb["Schedule_Matrix"])
     assert_test_cases(wb["TestCases"])
     assert_tables(wb)

@@ -6,8 +6,8 @@ It defines exact anchors and formulas before the workbook generator writes cells
 ## Layout
 
 The compact build view uses row 5 for scheduled productive headcount, as requested.
-The production-scale summary rows from the Phase 1 plan can reuse the same formulas at
-rows 202 through 204 by changing row numbers only.
+The production-scale summary rows sit below the 250-row roster body at rows
+260 through 262.
 
 | Range | Purpose |
 |-------|---------|
@@ -17,9 +17,11 @@ rows 202 through 204 by changing row numbers only.
 | `G5` | Label: `Scheduled Productive` |
 | `G6` | Label: `Required` |
 | `G7` | Label: `Over/Under` |
-| `A8:G200` | Employee metadata and editable schedule rows |
-| `H8:BC200` | Visible interval activity display grid |
-| `Calc_Engine!H8:BC200` | Numeric productive coverage fractions used by summaries |
+| `A8:G257` | Employee metadata rows linked from selected-day `Schedule_Data` records |
+| `H8:BC257` | Visible interval activity display grid |
+| `Calc_Engine!A8:G257` | Selected-day roster extraction from `tblScheduleData` |
+| `Calc_Engine!H8:BC257` | Numeric productive coverage fractions used by summaries |
+| `G260:G262` | Production summary labels |
 
 ## Interval Header Formula
 
@@ -33,7 +35,7 @@ Format `H1:BC1` as `hh:mm`.
 
 ## Visible 30-Minute Interval Intersection Cell
 
-Put this in `Schedule_Matrix!H8` and copy across/down through `BC200`.
+Put this in `Schedule_Matrix!H8` and copy across/down through `BC257`.
 
 This formula displays the activity code when the row overlaps the interval. It returns
 blank for null roster rows, missing activity codes, missing times, and non-overlapping
@@ -64,7 +66,7 @@ Copy behavior:
 
 ## Numeric Productive Coverage Formula
 
-Put this in `Calc_Engine!H8` and copy across/down through `BC200`.
+Put this in `Calc_Engine!H8` and copy across/down through `BC257`.
 
 This is the formula the scheduled headcount row should sum. It returns `0`, `0.5`, or
 `1` for 30-minute intervals in normal use, while also supporting any partial-minute
@@ -98,17 +100,17 @@ Expected behavior:
 Put this in `Schedule_Matrix!H5` and copy across through `BC5`.
 
 ```excel
-=SUM(Calc_Engine!H$8:H$200)
+=SUM(Calc_Engine!H$8:H$257)
 ```
 
 The row anchors keep the employee roster window fixed while the interval column changes
 from `H` through `BC`.
 
-If the production summary rows are used instead, put the same formula in
-`Schedule_Matrix!H202` and copy across:
+For production summary rows, put the same formula in `Schedule_Matrix!H260`
+and copy across:
 
 ```excel
-=SUM(Calc_Engine!H$8:H$200)
+=SUM(Calc_Engine!H$8:H$257)
 ```
 
 ## Required Headcount Formula
@@ -122,7 +124,7 @@ Put this in `Schedule_Matrix!H6` and copy across through `BC6`.
 This returns blank when a requirement row is missing, allowing conditional formatting
 to show the missing-requirement state instead of silently treating demand as zero.
 
-For production rows, place the same formula in `Schedule_Matrix!H203`.
+For production rows, place the same formula in `Schedule_Matrix!H261`.
 
 ## Net Staffing Formula
 
@@ -132,10 +134,10 @@ Put this in `Schedule_Matrix!H7` and copy across through `BC7`.
 =IF(H$6="","MissingRequirement",H$5-H$6)
 ```
 
-For production rows, place this adjusted formula in `Schedule_Matrix!H204`.
+For production rows, place this adjusted formula in `Schedule_Matrix!H262`.
 
 ```excel
-=IF(H$203="","MissingRequirement",H$202-H$203)
+=IF(H$261="","MissingRequirement",H$260-H$261)
 ```
 
 ## Table And Name Dependencies

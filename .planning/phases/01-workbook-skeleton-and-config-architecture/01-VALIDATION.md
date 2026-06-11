@@ -15,7 +15,7 @@ Phase 1 is valid when the workbook can be regenerated deterministically and the 
 3. Assert all required sheets exist.
 4. Assert `Schedule_Matrix!H1:BC1` contains 48 half-hour labels from `00:00` to `23:30`.
 5. Assert `Config_Settings!A1:H1`, `J1:K1`, and `M1:Q1` contain the correct table headers.
-6. Assert summary row labels exist at `Schedule_Matrix!G202:G204`.
+6. Assert summary row labels exist at `Schedule_Matrix!G260:G262`.
 7. Assert named ranges exist for:
    - `tblActivityCodes`
    - `tblParameters`

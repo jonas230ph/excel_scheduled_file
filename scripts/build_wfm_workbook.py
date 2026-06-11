@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -16,6 +16,14 @@ from openpyxl.workbook.defined_name import DefinedName
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "excel schedule" / "wfm_scheduling_matrix.xlsx"
 SAMPLE_DATE = date(2026, 6, 11)
+ROSTER_START_ROW = 8
+MAX_ROSTER_ROWS = 250
+ROSTER_END_ROW = ROSTER_START_ROW + MAX_ROSTER_ROWS - 1
+SUMMARY_SCHEDULED_ROW = 260
+SUMMARY_REQUIRED_ROW = 261
+SUMMARY_VARIANCE_ROW = 262
+INTERVAL_START_COLUMN = 8
+INTERVAL_END_COLUMN = 55
 SHEETS = [
     "Config_Settings",
     "Staffing_Requirements",
@@ -94,6 +102,7 @@ def populate_config(ws) -> None:
     parameters = [
         ("IntervalMinutes", 30),
         ("IntervalsPerDay", 48),
+        ("MaxRosterRows", MAX_ROSTER_ROWS),
         ("DayStartTime", time(0, 0)),
         ("ToleranceHeadcount", 0),
         ("WorkbookEngineVersion", "1.0.0-phase1"),
@@ -156,12 +165,16 @@ def populate_schedule_data(ws) -> None:
     ]
     ws.append(headers)
     rows = [
-        ("E001", "Avery Chen", SAMPLE_DATE, "2026-06-11 08:15", "2026-06-11 17:00", "OWD", 8, "OWD", "Partial first interval", "Valid", 1),
-        ("E002", "Blake Diaz", SAMPLE_DATE, "2026-06-11 23:45", "2026-06-12 02:15", "OWD", 8, "OWD", "Overnight", "Valid", 2),
-        ("E003", "Casey Singh", SAMPLE_DATE, "2026-06-11 12:00", "2026-06-11 12:30", "Lch", 8, "Lch", "Nonproductive", "Valid", 3),
+        ("E001", "Avery Chen", SAMPLE_DATE, datetime(2026, 6, 11, 8, 15), datetime(2026, 6, 11, 17, 0), "OWD", 8, "OWD", "Partial first interval", "Valid", 1),
+        ("E002", "Blake Diaz", SAMPLE_DATE, datetime(2026, 6, 11, 23, 45), datetime(2026, 6, 12, 2, 15), "OWD", 8, "OWD", "Overnight", "Valid", 2),
+        ("E003", "Casey Singh", SAMPLE_DATE, datetime(2026, 6, 11, 12, 0), datetime(2026, 6, 11, 12, 30), "Lch", 8, "Lch", "Nonproductive", "Valid", 3),
     ]
     for row in rows:
         ws.append(row)
+    for row_index in range(2, len(rows) + 2):
+        ws.cell(row=row_index, column=3).number_format = "yyyy-mm-dd"
+        ws.cell(row=row_index, column=4).number_format = "yyyy-mm-dd hh:mm"
+        ws.cell(row=row_index, column=5).number_format = "yyyy-mm-dd hh:mm"
     for row_index in range(len(rows) + 2, 1001):
         ws.cell(row=row_index, column=1, value="")
     add_table(ws, "tblScheduleData", "A1:K1000")
@@ -204,6 +217,14 @@ def calc_coverage_formula(row: int, column_letter: str) -> str:
     )
 
 
+def selected_schedule_formula(field_name: str, row: int) -> str:
+    relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
+    return (
+        f'=IFERROR(INDEX(FILTER(tblScheduleData[{field_name}],'
+        f"tblScheduleData[OperationalDate]=SelectedDate),{relative_index}),\"\")"
+    )
+
+
 def populate_schedule_matrix(wb: Workbook) -> None:
     ws = wb["Schedule_Matrix"]
     calc = wb["Calc_Engine"]
@@ -212,7 +233,7 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         ws.cell(row=1, column=column_index, value=header)
         calc.cell(row=1, column=column_index, value=header)
     for index in range(48):
-        column = 8 + index
+        column = INTERVAL_START_COLUMN + index
         ws.cell(row=1, column=column, value=f"=TIME(0,0,0)+(COLUMN()-COLUMN($H$1))*TIME(0,30,0)")
         calc.cell(row=1, column=column, value=f"=Schedule_Matrix!{ws.cell(row=1, column=column).coordinate}")
 
@@ -220,45 +241,41 @@ def populate_schedule_matrix(wb: Workbook) -> None:
     ws["G5"] = "Scheduled Productive"
     ws["G6"] = "Required"
     ws["G7"] = "Over/Under"
-    ws["G202"] = "Scheduled Productive"
-    ws["G203"] = "Required"
-    ws["G204"] = "Over/Under"
+    ws.cell(row=SUMMARY_SCHEDULED_ROW, column=7, value="Scheduled Productive")
+    ws.cell(row=SUMMARY_REQUIRED_ROW, column=7, value="Required")
+    ws.cell(row=SUMMARY_VARIANCE_ROW, column=7, value="Over/Under")
 
-    sample_rows = [
-        ("E001", "Avery Chen", 8, "OWD", SAMPLE_DATE, "2026-06-11 08:15", "2026-06-11 17:00"),
-        ("E002", "Blake Diaz", 8, "OWD", SAMPLE_DATE, "2026-06-11 23:45", "2026-06-12 02:15"),
-        ("E003", "Casey Singh", 8, "Lch", SAMPLE_DATE, "2026-06-11 12:00", "2026-06-11 12:30"),
-    ]
-    for output_row, row in zip([2, 3, 4], sample_rows):
-        for column_index, value in enumerate(row, start=1):
-            ws.cell(row=output_row, column=column_index, value=value)
-    for output_row, row in zip([8, 9, 10], sample_rows):
-        for column_index, value in enumerate(row, start=1):
-            ws.cell(row=output_row, column=column_index, value=value)
-            calc.cell(row=output_row, column=column_index, value=f"=Schedule_Matrix!{ws.cell(output_row, column_index).coordinate}")
-
-    for row in range(8, 201):
-        for column in range(8, 56):
+    for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
+        calc.cell(row=row, column=1, value=selected_schedule_formula("EmployeeID", row))
+        calc.cell(row=row, column=2, value=selected_schedule_formula("Name", row))
+        calc.cell(row=row, column=3, value=selected_schedule_formula("ContractualHours", row))
+        calc.cell(row=row, column=4, value=selected_schedule_formula("ActivityCode", row))
+        calc.cell(row=row, column=5, value=f'=IF(Calc_Engine!A{row}="","",SelectedDate)')
+        calc.cell(row=row, column=6, value=selected_schedule_formula("ShiftStart", row))
+        calc.cell(row=row, column=7, value=selected_schedule_formula("ShiftEnd", row))
+        for column in range(1, 8):
+            ws.cell(row=row, column=column, value=f"=Calc_Engine!{ws.cell(row=row, column=column).coordinate}")
+        for column in range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1):
             column_letter = ws.cell(row=1, column=column).column_letter
             ws.cell(row=row, column=column, value=matrix_visible_formula(row, column_letter))
             calc.cell(row=row, column=column, value=calc_coverage_formula(row, column_letter))
 
-    for column in range(8, 56):
+    for column in range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1):
         column_letter = ws.cell(row=1, column=column).column_letter
-        ws.cell(row=5, column=column, value=f"=SUM(Calc_Engine!{column_letter}$8:{column_letter}$200)")
+        ws.cell(row=5, column=column, value=f"=SUM(Calc_Engine!{column_letter}${ROSTER_START_ROW}:{column_letter}${ROSTER_END_ROW})")
         ws.cell(
             row=6,
             column=column,
             value=f'=IFNA(SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,tblRequirements[IntervalStart],{column_letter}$1),"")',
         )
         ws.cell(row=7, column=column, value=f'=IF({column_letter}$6="","MissingRequirement",{column_letter}$5-{column_letter}$6)')
-        ws.cell(row=202, column=column, value=f"=SUM(Calc_Engine!{column_letter}$8:{column_letter}$200)")
+        ws.cell(row=SUMMARY_SCHEDULED_ROW, column=column, value=f"=SUM(Calc_Engine!{column_letter}${ROSTER_START_ROW}:{column_letter}${ROSTER_END_ROW})")
         ws.cell(
-            row=203,
+            row=SUMMARY_REQUIRED_ROW,
             column=column,
             value=f'=IFNA(SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,tblRequirements[IntervalStart],{column_letter}$1),"")',
         )
-        ws.cell(row=204, column=column, value=f'=IF({column_letter}$203="","MissingRequirement",{column_letter}$202-{column_letter}$203)')
+        ws.cell(row=SUMMARY_VARIANCE_ROW, column=column, value=f'=IF({column_letter}${SUMMARY_REQUIRED_ROW}="","MissingRequirement",{column_letter}${SUMMARY_SCHEDULED_ROW}-{column_letter}${SUMMARY_REQUIRED_ROW})')
 
     add_conditional_formatting(ws)
 
@@ -270,16 +287,18 @@ def add_conditional_formatting(ws) -> None:
     exact_fill = PatternFill("solid", fgColor="63BE7B")
     over_fill = PatternFill("solid", fgColor="5B9BD5")
     missing_fill = PatternFill("solid", fgColor="BFBFBF")
-    ws.conditional_formatting.add("H8:BC200", FormulaRule(formula=['H8="OWD"'], fill=productive_fill))
-    ws.conditional_formatting.add("H8:BC200", FormulaRule(formula=['OR(H8="BRK",H8="LCH",H8="MT",H8="TRN")'], fill=nonproductive_fill))
+    body_range = f"H{ROSTER_START_ROW}:BC{ROSTER_END_ROW}"
+    variance_range = f"H{SUMMARY_VARIANCE_ROW}:BC{SUMMARY_VARIANCE_ROW}"
+    ws.conditional_formatting.add(body_range, FormulaRule(formula=['H8="OWD"'], fill=productive_fill))
+    ws.conditional_formatting.add(body_range, FormulaRule(formula=['OR(H8="BRK",H8="LCH",H8="MT",H8="TRN")'], fill=nonproductive_fill))
     ws.conditional_formatting.add("H7:BC7", FormulaRule(formula=['H7="MissingRequirement"'], fill=missing_fill))
-    ws.conditional_formatting.add("H204:BC204", FormulaRule(formula=['H204="MissingRequirement"'], fill=missing_fill))
+    ws.conditional_formatting.add(variance_range, FormulaRule(formula=[f'H{SUMMARY_VARIANCE_ROW}="MissingRequirement"'], fill=missing_fill))
     ws.conditional_formatting.add("H7:BC7", CellIsRule(operator="lessThan", formula=["0"], fill=under_fill))
     ws.conditional_formatting.add("H7:BC7", CellIsRule(operator="equal", formula=["0"], fill=exact_fill))
     ws.conditional_formatting.add("H7:BC7", CellIsRule(operator="greaterThan", formula=["0"], fill=over_fill))
-    ws.conditional_formatting.add("H204:BC204", CellIsRule(operator="lessThan", formula=["0"], fill=under_fill))
-    ws.conditional_formatting.add("H204:BC204", CellIsRule(operator="equal", formula=["0"], fill=exact_fill))
-    ws.conditional_formatting.add("H204:BC204", CellIsRule(operator="greaterThan", formula=["0"], fill=over_fill))
+    ws.conditional_formatting.add(variance_range, CellIsRule(operator="lessThan", formula=["0"], fill=under_fill))
+    ws.conditional_formatting.add(variance_range, CellIsRule(operator="equal", formula=["0"], fill=exact_fill))
+    ws.conditional_formatting.add(variance_range, CellIsRule(operator="greaterThan", formula=["0"], fill=over_fill))
 
 
 def populate_test_cases(ws) -> None:
@@ -304,7 +323,7 @@ def setup_names_and_validation(wb: Workbook) -> None:
     add_name(wb, "SelectedDate", "'Schedule_Matrix'!$E$2")
     add_name(wb, "IntervalHeaders", "'Schedule_Matrix'!$H$1:$BC$1")
     add_name(wb, "ActiveActivityCodes", "'Config_Settings'!$A$2:$A$13")
-    add_name(wb, "tblDailyMatrix", "'Schedule_Matrix'!$A$1:$BC$200")
+    add_name(wb, "tblDailyMatrix", "'Schedule_Matrix'!$A$1:$BC$257")
 
     schedule = wb["Schedule_Data"]
     validation = DataValidation(type="list", formula1="=ActiveActivityCodes", allow_blank=True)
@@ -337,11 +356,16 @@ def format_workbook(wb: Workbook) -> None:
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 18
         for column in range(8, 56):
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 8
-        for row in [1, 5, 6, 7, 202, 203, 204]:
+        for row in [1, 5, 6, 7, SUMMARY_SCHEDULED_ROW, SUMMARY_REQUIRED_ROW, SUMMARY_VARIANCE_ROW]:
             for cell in ws[row]:
                 cell.font = Font(bold=True)
     matrix["E2"].number_format = "yyyy-mm-dd"
-    for column in range(8, 56):
+    for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
+        for ws in [matrix, calc]:
+            ws.cell(row=row, column=5).number_format = "yyyy-mm-dd"
+            ws.cell(row=row, column=6).number_format = "yyyy-mm-dd hh:mm"
+            ws.cell(row=row, column=7).number_format = "yyyy-mm-dd hh:mm"
+    for column in range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1):
         matrix.cell(row=1, column=column).number_format = "hh:mm"
         calc.cell(row=1, column=column).number_format = "hh:mm"
     calc.sheet_state = "hidden"

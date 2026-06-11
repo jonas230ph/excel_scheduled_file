@@ -14,19 +14,19 @@ The selected-day staffing variance must be fast, visible, and trustworthy after 
 
 ### Validated
 
-(None yet - ship to validate)
+- [x] Build a workbook tab structure with `Config_Settings`, `Staffing_Requirements`, and `Schedule_Matrix` as the core user-facing tabs.
+- [x] Support a selected operational day that can switch the live daily grid without rebuilding formulas.
+- [x] Store activity behavior in configurable lookup tables rather than hardcoded formula checks.
+- [x] Render 48 half-hour intervals from `00:00` through `23:30` in `Schedule_Matrix!H:BC`.
+- [x] Keep metadata fields in `Schedule_Matrix!A:G`: Employee ID, Name, Contractual Hours, Current Shift, Target Day Select, Shift Start, Shift End.
+- [x] Compute scheduled productive headcount versus required headcount by interval.
+- [x] Show over, exact, under, invalid, missing, and nonproductive states through conditional formatting.
+- [x] Include a hidden or protected calculation layer with named formulas so the visible matrix stays readable.
+- [x] Include a `TestCases` sheet covering same-day shifts, overnight shifts, boundary overlaps, missing codes, blank requirements, and over/under states.
 
 ### Active
 
-- [ ] Build a workbook tab structure with `Config_Settings`, `Staffing_Requirements`, and `Schedule_Matrix` as the core user-facing tabs.
-- [ ] Support a selected operational day that can switch the live daily grid without rebuilding formulas.
-- [ ] Store activity behavior in configurable lookup tables rather than hardcoded formula checks.
-- [ ] Render 48 half-hour intervals from `00:00` through `23:30` in `Schedule_Matrix!H:BC`.
-- [ ] Keep metadata fields in `Schedule_Matrix!A:G`: Employee ID, Name, Contractual Hours, Current Shift, Target Day Select, Shift Start, Shift End.
-- [ ] Compute scheduled productive headcount versus required headcount by interval.
-- [ ] Show over, exact, under, invalid, missing, and nonproductive states through conditional formatting.
-- [ ] Include a hidden or protected calculation layer with named formulas so the visible matrix stays readable.
-- [ ] Include a `TestCases` sheet covering same-day shifts, overnight shifts, boundary overlaps, missing codes, blank requirements, and over/under states.
+(None - v1 workbook-engine scope is complete.)
 
 ### Out of Scope
 
@@ -262,11 +262,11 @@ Dynamic formula names:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Daily View + Weekly Data Engine | Keeps the workbook responsive while preserving weekly and overnight schedule support | — Pending |
-| Hidden/protected calculation layer | Keeps visible matrix readable and formula behavior auditable | — Pending |
-| Activity behavior is table-driven | Prevents hardcoded `OWD`/`Brk` formula logic and allows business-rule changes | — Pending |
-| Add `TestCases` sheet | Excel formulas need regression coverage for overnight and boundary cases | — Pending |
-| Defer forecasting, uploads, and VBA automation | These are enterprise layers, not required to prove the MVP engine | — Pending |
+| Daily View + Weekly Data Engine | Keeps the workbook responsive while preserving weekly and overnight schedule support | Complete |
+| Hidden/protected calculation layer | Keeps visible matrix readable and formula behavior auditable | Complete |
+| Activity behavior is table-driven | Prevents hardcoded `OWD`/`Brk` formula logic and allows business-rule changes | Complete |
+| Add `TestCases` sheet | Excel formulas need regression coverage for overnight and boundary cases | Complete |
+| Defer forecasting, uploads, and VBA automation | These are enterprise layers, not required to prove the MVP engine | Complete |
 
 ## Evolution
 

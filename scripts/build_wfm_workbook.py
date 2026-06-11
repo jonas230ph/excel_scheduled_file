@@ -25,6 +25,7 @@ SUMMARY_REQUIRED_ROW = 261
 SUMMARY_VARIANCE_ROW = 262
 INTERVAL_START_COLUMN = 8
 INTERVAL_END_COLUMN = 55
+VALIDATION_STATE_COLUMN = 56
 SHEETS = [
     "Config_Settings",
     "Staffing_Requirements",
@@ -124,7 +125,10 @@ def populate_config(ws) -> None:
         ("Under", None, -1, "F8696B", "FFFFFF"),
         ("Exact", 0, 0, "63BE7B", "FFFFFF"),
         ("Over", 1, None, "5B9BD5", "FFFFFF"),
-        ("Invalid", None, None, "FFC000", "000000"),
+        ("InvalidCode", None, None, "FFC000", "000000"),
+        ("InvalidSchedule", None, None, "FFD966", "000000"),
+        ("Duplicate", None, None, "D9EAD3", "000000"),
+        ("MissingDate", None, None, "C9DAF8", "000000"),
         ("MissingRequirement", None, None, "BFBFBF", "000000"),
         ("Nonproductive", None, None, "F4B183", "000000"),
     ]
@@ -166,9 +170,9 @@ def populate_schedule_data(ws) -> None:
     ]
     ws.append(headers)
     rows = [
-        ("E001", "Avery Chen", SAMPLE_DATE, datetime(2026, 6, 11, 8, 15), datetime(2026, 6, 11, 17, 0), "OWD", 8, "OWD", "Partial first interval", "Valid", 1),
-        ("E002", "Blake Diaz", SAMPLE_DATE, datetime(2026, 6, 11, 23, 45), datetime(2026, 6, 12, 2, 15), "OWD", 8, "OWD", "Overnight", "Valid", 2),
-        ("E003", "Casey Singh", SAMPLE_DATE, datetime(2026, 6, 11, 12, 0), datetime(2026, 6, 11, 12, 30), "Lch", 8, "Lch", "Nonproductive", "Valid", 3),
+        ("E001", "Avery Chen", SAMPLE_DATE, datetime(2026, 6, 11, 8, 15), datetime(2026, 6, 11, 17, 0), "OWD", 8, "OWD", "Partial first interval", "", 1),
+        ("E002", "Blake Diaz", SAMPLE_DATE, datetime(2026, 6, 11, 23, 45), datetime(2026, 6, 12, 2, 15), "OWD", 8, "OWD", "Overnight", "", 2),
+        ("E003", "Casey Singh", SAMPLE_DATE, datetime(2026, 6, 11, 12, 0), datetime(2026, 6, 11, 12, 30), "Lch", 8, "Lch", "Nonproductive", "", 3),
     ]
     for row in rows:
         ws.append(row)
@@ -178,7 +182,24 @@ def populate_schedule_data(ws) -> None:
         ws.cell(row=row_index, column=5).number_format = "yyyy-mm-dd hh:mm"
     for row_index in range(len(rows) + 2, 1001):
         ws.cell(row=row_index, column=1, value="")
+    for row_index in range(2, 1001):
+        ws.cell(row=row_index, column=10, value=schedule_validation_formula(row_index))
+    add_schedule_data_conditional_formatting(ws)
     add_table(ws, "tblScheduleData", "A1:K1000")
+
+
+def schedule_validation_formula(row: int) -> str:
+    return (
+        f'=IF(COUNTA($A{row}:$F{row})=0,"",'
+        f'IF($C{row}="","MissingDate",'
+        f'IF(OR($A{row}="",$D{row}="",$E{row}="",$D{row}=$E{row}),"InvalidSchedule",'
+        f'IF(COUNTIF(ActiveActivityCodes,$F{row})=0,"InvalidCode",'
+        f'IF(COUNTIFS(tblScheduleData[EmployeeID],$A{row},'
+        f'tblScheduleData[OperationalDate],$C{row},'
+        f'tblScheduleData[ShiftStart],$D{row},'
+        f'tblScheduleData[ShiftEnd],$E{row},'
+        f'tblScheduleData[ActivityCode],$F{row})>1,"Duplicate","Valid")))))'
+    )
 
 
 def matrix_visible_formula(row: int, column_letter: str) -> str:
@@ -227,6 +248,14 @@ def requirement_formula(column_letter: str, row: int) -> str:
     )
 
 
+def selected_day_variance_formula(column_letter: str, scheduled_row: int, required_row: int) -> str:
+    return (
+        f'=IF($E$2="","MissingDate",'
+        f'IF({column_letter}${required_row}="","MissingRequirement",'
+        f"ROUND({column_letter}${scheduled_row}-{column_letter}${required_row},2)))"
+    )
+
+
 def selected_schedule_formula(field_name: str, row: int) -> str:
     relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
     return (
@@ -246,6 +275,8 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         column = INTERVAL_START_COLUMN + index
         ws.cell(row=1, column=column, value=f"=TIME(0,0,0)+(COLUMN()-COLUMN($H$1))*TIME(0,30,0)")
         calc.cell(row=1, column=column, value=f"=Schedule_Matrix!{ws.cell(row=1, column=column).coordinate}")
+    ws.cell(row=1, column=VALIDATION_STATE_COLUMN, value="ValidationState")
+    calc.cell(row=1, column=VALIDATION_STATE_COLUMN, value="ValidationState")
 
     ws["E2"] = SAMPLE_DATE
     ws["G5"] = "Scheduled Productive"
@@ -263,8 +294,10 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         calc.cell(row=row, column=5, value=f'=IF(Calc_Engine!A{row}="","",SelectedDate)')
         calc.cell(row=row, column=6, value=selected_schedule_formula("ShiftStart", row))
         calc.cell(row=row, column=7, value=selected_schedule_formula("ShiftEnd", row))
+        calc.cell(row=row, column=VALIDATION_STATE_COLUMN, value=selected_schedule_formula("ValidationState", row))
         for column in range(1, 8):
             ws.cell(row=row, column=column, value=f"=Calc_Engine!{ws.cell(row=row, column=column).coordinate}")
+        ws.cell(row=row, column=VALIDATION_STATE_COLUMN, value=f"=Calc_Engine!{ws.cell(row=row, column=VALIDATION_STATE_COLUMN).coordinate}")
         for column in range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1):
             column_letter = ws.cell(row=1, column=column).column_letter
             ws.cell(row=row, column=column, value=matrix_visible_formula(row, column_letter))
@@ -278,7 +311,7 @@ def populate_schedule_matrix(wb: Workbook) -> None:
             column=column,
             value=requirement_formula(column_letter, 1),
         )
-        ws.cell(row=7, column=column, value=f'=IF({column_letter}$6="","MissingRequirement",ROUND({column_letter}$5-{column_letter}$6,2))')
+        ws.cell(row=7, column=column, value=selected_day_variance_formula(column_letter, 5, 6))
         ws.cell(row=SUMMARY_SCHEDULED_ROW, column=column, value=f"=SUM(Calc_Engine!{column_letter}${ROSTER_START_ROW}:{column_letter}${ROSTER_END_ROW})")
         ws.cell(
             row=SUMMARY_REQUIRED_ROW,
@@ -288,10 +321,7 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         ws.cell(
             row=SUMMARY_VARIANCE_ROW,
             column=column,
-            value=(
-                f'=IF({column_letter}${SUMMARY_REQUIRED_ROW}="","MissingRequirement",'
-                f"ROUND({column_letter}${SUMMARY_SCHEDULED_ROW}-{column_letter}${SUMMARY_REQUIRED_ROW},2))"
-            ),
+            value=selected_day_variance_formula(column_letter, SUMMARY_SCHEDULED_ROW, SUMMARY_REQUIRED_ROW),
         )
 
     add_conditional_formatting(ws)
@@ -327,12 +357,24 @@ def add_conditional_formatting(ws) -> None:
     under_fill = PatternFill("solid", fgColor="F8696B")
     exact_fill = PatternFill("solid", fgColor="63BE7B")
     over_fill = PatternFill("solid", fgColor="5B9BD5")
+    invalid_code_fill = PatternFill("solid", fgColor="FFC000")
+    invalid_schedule_fill = PatternFill("solid", fgColor="FFD966")
+    duplicate_fill = PatternFill("solid", fgColor="D9EAD3")
+    missing_date_fill = PatternFill("solid", fgColor="C9DAF8")
     missing_fill = PatternFill("solid", fgColor="BFBFBF")
     body_range = f"H{ROSTER_START_ROW}:BC{ROSTER_END_ROW}"
+    row_range = f"A{ROSTER_START_ROW}:BC{ROSTER_END_ROW}"
     variance_range = f"H{SUMMARY_VARIANCE_ROW}:BC{SUMMARY_VARIANCE_ROW}"
     ws.conditional_formatting.add(body_range, FormulaRule(formula=['H8="OWD"'], fill=productive_fill))
     ws.conditional_formatting.add(body_range, FormulaRule(formula=['OR(H8="BRK",H8="LCH",H8="MT",H8="TRN")'], fill=nonproductive_fill))
+    ws.conditional_formatting.add(row_range, FormulaRule(formula=['$BD8="InvalidCode"'], fill=invalid_code_fill))
+    ws.conditional_formatting.add(row_range, FormulaRule(formula=['$BD8="InvalidSchedule"'], fill=invalid_schedule_fill))
+    ws.conditional_formatting.add(row_range, FormulaRule(formula=['$BD8="Duplicate"'], fill=duplicate_fill))
+    ws.conditional_formatting.add(row_range, FormulaRule(formula=['$BD8="MissingDate"'], fill=missing_date_fill))
+    ws.conditional_formatting.add("E2", FormulaRule(formula=['$E$2=""'], fill=missing_date_fill))
+    ws.conditional_formatting.add("H7:BC7", FormulaRule(formula=['H7="MissingDate"'], fill=missing_date_fill))
     ws.conditional_formatting.add("H7:BC7", FormulaRule(formula=['H7="MissingRequirement"'], fill=missing_fill))
+    ws.conditional_formatting.add(variance_range, FormulaRule(formula=[f'H{SUMMARY_VARIANCE_ROW}="MissingDate"'], fill=missing_date_fill))
     ws.conditional_formatting.add(variance_range, FormulaRule(formula=[f'H{SUMMARY_VARIANCE_ROW}="MissingRequirement"'], fill=missing_fill))
     ws.conditional_formatting.add("H7:BC7", CellIsRule(operator="lessThan", formula=["0"], fill=under_fill))
     ws.conditional_formatting.add("H7:BC7", CellIsRule(operator="equal", formula=["0"], fill=exact_fill))
@@ -342,22 +384,110 @@ def add_conditional_formatting(ws) -> None:
     ws.conditional_formatting.add(variance_range, CellIsRule(operator="greaterThan", formula=["0"], fill=over_fill))
 
 
+def add_schedule_data_conditional_formatting(ws) -> None:
+    invalid_code_fill = PatternFill("solid", fgColor="FFC000")
+    invalid_schedule_fill = PatternFill("solid", fgColor="FFD966")
+    duplicate_fill = PatternFill("solid", fgColor="D9EAD3")
+    missing_date_fill = PatternFill("solid", fgColor="C9DAF8")
+    data_range = "A2:K1000"
+    ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="InvalidCode"'], fill=invalid_code_fill))
+    ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="InvalidSchedule"'], fill=invalid_schedule_fill))
+    ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="Duplicate"'], fill=duplicate_fill))
+    ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="MissingDate"'], fill=missing_date_fill))
+
+
 def populate_test_cases(ws) -> None:
     headers = ["TestID", "Scenario", "Input", "Expected", "Actual", "Pass", "Requirement", "Notes"]
     ws.append(headers)
+    ws["J1"] = "OverallStatus"
+    ws["K1"] = '=IF(COUNTIF(F2:F8,FALSE)=0,"PASS","FAIL")'
     rows = [
-        ("TC-001", "Same-day shift", "09:00-17:00 OWD", "Full overlap intervals count", "", "", "TEST-01", "Placeholder for workbook formula test"),
-        ("TC-002", "Overnight shift", "22:00-06:00 OWD", "Crosses midnight correctly", "", "", "TEST-02", "Uses datetime windows"),
-        ("TC-003", "Boundary overlap", "08:15 start", "08:00 interval = 0.5", "", "", "TEST-03", "Matches Python test contract"),
-        ("TC-004", "OWD staffed", "OWD", "Counts as staffed", "", "", "TEST-04", "Lookup driven"),
-        ("TC-005", "Break unstaffed", "Brk/Lch/Mt/Trn", "Displays but counts zero", "", "", "TEST-05", "Lookup driven"),
-        ("TC-006", "Missing and variance states", "blank req / over / under", "Visible states", "", "", "TEST-06", "Conditional formatting"),
+        (
+            "TEST-01",
+            "Same-day productive shift",
+            "09:00-17:00 OWD",
+            16,
+            "=(DATE(2026,6,11)+TIME(17,0,0)-(DATE(2026,6,11)+TIME(9,0,0)))/TIME(0,30,0)",
+            "=ABS(E2-D2)<0.000001",
+            "TEST-01",
+            "Verifies same-day half-hour interval count.",
+        ),
+        (
+            "TEST-02",
+            "Overnight productive shift",
+            "22:00-06:00 OWD",
+            16,
+            "=(DATE(2026,6,12)+TIME(6,0,0)-(DATE(2026,6,11)+TIME(22,0,0)))/TIME(0,30,0)",
+            "=ABS(E3-D3)<0.000001",
+            "TEST-02",
+            "Verifies midnight-crossing interval count.",
+        ),
+        (
+            "TEST-03",
+            "Boundary overlap",
+            "08:15 start against 08:00-08:30 interval",
+            0.5,
+            "=MAX(0,MIN(DATE(2026,6,11)+TIME(8,30,0),DATE(2026,6,11)+TIME(12,0,0))-MAX(DATE(2026,6,11)+TIME(8,0,0),DATE(2026,6,11)+TIME(8,15,0)))/TIME(0,30,0)",
+            "=ABS(E4-D4)<0.000001",
+            "TEST-03",
+            "Verifies partial interval proration.",
+        ),
+        (
+            "TEST-04",
+            "Productive code lookup",
+            "OWD CountsAsStaffed",
+            1,
+            '=--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("OWD",tblActivityCodes[Code],0))',
+            "=ABS(E5-D5)<0.000001",
+            "TEST-04",
+            "Verifies OWD counts as staffed through config lookup.",
+        ),
+        (
+            "TEST-05",
+            "Nonproductive code lookup",
+            "Brk/Lch/Mt/Trn CountsAsStaffed",
+            0,
+            '=SUM(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Brk",tblActivityCodes[Code],0)),--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Lch",tblActivityCodes[Code],0)),--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Mt",tblActivityCodes[Code],0)),--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Trn",tblActivityCodes[Code],0)))',
+            "=ABS(E6-D6)<0.000001",
+            "TEST-05",
+            "Verifies visible nonproductive states do not count as staffed.",
+        ),
+        (
+            "TEST-06",
+            "Validation and variance states",
+            "Invalid code / blank req / exact / under / over",
+            "InvalidCode|MissingRequirement|Exact|Under|Over",
+            '=TEXTJOIN("|",TRUE,IF(COUNTIF(ActiveActivityCodes,"BAD")=0,"InvalidCode",""),IF(COUNTIFS(tblRequirements[OperationalDate],DATE(2099,1,1),tblRequirements[IntervalStart],TIME(0,0,0))=0,"MissingRequirement",""),IF(4-4=0,"Exact",""),IF(3-4<0,"Under",""),IF(5-4>0,"Over",""))',
+            "=E7=D7",
+            "TEST-06",
+            "Verifies key validation and variance labels.",
+        ),
+        (
+            "TEST-07",
+            "Overall workbook test status",
+            "Rows TEST-01 through TEST-06",
+            "PASS",
+            '=IF(COUNTIF(F2:F7,FALSE)=0,"PASS","FAIL")',
+            "=E8=D8",
+            "TEST-07",
+            "Exposes an overall pass/fail status for workbook formula tests.",
+        ),
     ]
     for row in rows:
         ws.append(row)
     for row_index in range(len(rows) + 2, 101):
         ws.cell(row=row_index, column=1, value="")
+    add_test_case_conditional_formatting(ws)
     add_table(ws, "tblTestCases", "A1:H100")
+
+
+def add_test_case_conditional_formatting(ws) -> None:
+    pass_fill = PatternFill("solid", fgColor="C6EFCE")
+    fail_fill = PatternFill("solid", fgColor="F8696B")
+    ws.conditional_formatting.add("F2:F8", FormulaRule(formula=["F2=TRUE"], fill=pass_fill))
+    ws.conditional_formatting.add("F2:F8", FormulaRule(formula=["F2=FALSE"], fill=fail_fill))
+    ws.conditional_formatting.add("K1", FormulaRule(formula=['K1="PASS"'], fill=pass_fill))
+    ws.conditional_formatting.add("K1", FormulaRule(formula=['K1="FAIL"'], fill=fail_fill))
 
 
 def setup_names_and_validation(wb: Workbook) -> None:
@@ -398,6 +528,7 @@ def format_workbook(wb: Workbook) -> None:
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 18
         for column in range(8, 56):
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 8
+        ws.column_dimensions[ws.cell(row=1, column=VALIDATION_STATE_COLUMN).column_letter].hidden = True
         for row in [1, 5, 6, 7, SUMMARY_SCHEDULED_ROW, SUMMARY_REQUIRED_ROW, SUMMARY_VARIANCE_ROW]:
             for cell in ws[row]:
                 cell.font = Font(bold=True)

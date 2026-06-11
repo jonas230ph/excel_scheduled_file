@@ -80,6 +80,19 @@ def assert_config(ws) -> None:
     assert code_rows["OT"] is True
     for code in ["Brk", "Lch", "Mt", "Trn"]:
         assert code_rows[code] is False
+    threshold_states = {ws.cell(row=row, column=13).value for row in range(2, 21)}
+    for state in [
+        "Under",
+        "Exact",
+        "Over",
+        "InvalidCode",
+        "InvalidSchedule",
+        "Duplicate",
+        "MissingDate",
+        "MissingRequirement",
+        "Nonproductive",
+    ]:
+        assert state in threshold_states, f"Missing threshold state {state}"
 
 
 def assert_requirements(ws) -> None:
@@ -98,9 +111,16 @@ def assert_schedule_data(ws) -> None:
     for coordinate in ["D2", "E2", "D3", "E3", "D4", "E4"]:
         assert ws[coordinate].data_type == "d", f"{coordinate} must be a typed Excel datetime"
         assert ws[coordinate].number_format == "yyyy-mm-dd hh:mm", f"{coordinate} must use datetime format"
+    assert ws["J2"].value.startswith('=IF(COUNTA($A2:$F2)=0,""')
+    assert '$C2="","MissingDate"' in ws["J2"].value
+    assert '$D2=$E2),"InvalidSchedule"' in ws["J2"].value
+    assert 'COUNTIF(ActiveActivityCodes,$F2)=0,"InvalidCode"' in ws["J2"].value
+    assert ',"Duplicate","Valid"' in ws["J2"].value
     validations = list(ws.data_validations.dataValidation)
     assert validations, "Missing activity-code data validation"
     assert any("F2:F1000" in str(validation.sqref) for validation in validations), "Activity validation not applied to F2:F1000"
+    cf_ranges = {str(item.sqref) for item in ws.conditional_formatting}
+    assert "A2:K1000" in cf_ranges, f"Missing schedule-data validation formatting: {cf_ranges}"
 
 
 def assert_schedule_matrix(ws) -> None:
@@ -113,6 +133,8 @@ def assert_schedule_matrix(ws) -> None:
     assert ws["G5"].value == "Scheduled Productive"
     assert ws["G6"].value == "Required"
     assert ws["G7"].value == "Over/Under"
+    assert ws["BD1"].value == "ValidationState"
+    assert ws.column_dimensions["BD"].hidden, "ValidationState helper column must be hidden"
     assert ws["G260"].value == "Scheduled Productive"
     assert ws["G261"].value == "Required"
     assert ws["G262"].value == "Over/Under"
@@ -121,17 +143,20 @@ def assert_schedule_matrix(ws) -> None:
     assert ws["H5"].number_format == "0.00"
     assert "COUNTIFS(tblRequirements[OperationalDate],$E$2" in ws["H6"].value
     assert ')=0,"",SUMIFS(tblRequirements[RequiredHeadcount]' in ws["H6"].value
-    assert ws["H7"].value == '=IF(H$6="","MissingRequirement",ROUND(H$5-H$6,2))'
+    assert ws["H7"].value == '=IF($E$2="","MissingDate",IF(H$6="","MissingRequirement",ROUND(H$5-H$6,2)))'
     assert ws["H260"].value == "=SUM(Calc_Engine!H$8:H$257)"
     assert ws["H260"].number_format == "0.00"
     assert "COUNTIFS(tblRequirements[OperationalDate],$E$2" in ws["H261"].value
     assert ')=0,"",SUMIFS(tblRequirements[RequiredHeadcount]' in ws["H261"].value
-    assert ws["H262"].value == '=IF(H$261="","MissingRequirement",ROUND(H$260-H$261,2))'
+    assert ws["H262"].value == '=IF($E$2="","MissingDate",IF(H$261="","MissingRequirement",ROUND(H$260-H$261,2)))'
     assert ws["H262"].number_format == "0.00"
     assert ws["A8"].value == "=Calc_Engine!A8"
     assert ws["F8"].value == "=Calc_Engine!F8"
     assert ws["G8"].value == "=Calc_Engine!G8"
+    assert ws["BD8"].value == "=Calc_Engine!BD8"
     cf_ranges = {str(item.sqref) for item in ws.conditional_formatting}
+    assert "A8:BC257" in cf_ranges, f"Missing selected-row validation formatting: {cf_ranges}"
+    assert "E2" in cf_ranges, f"Missing selected-date validation formatting: {cf_ranges}"
     assert "H8:BC257" in cf_ranges, f"Missing 250-row body conditional formatting: {cf_ranges}"
     assert "H262:BC262" in cf_ranges, f"Missing moved variance conditional formatting: {cf_ranges}"
     assert len(ws.conditional_formatting) > 0, "Missing conditional formatting"
@@ -141,6 +166,9 @@ def assert_calc_engine(ws) -> None:
     assert ws["A8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[EmployeeID]")
     assert ws["D8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ActivityCode]")
     assert ws["F8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ShiftStart]")
+    assert ws["BD1"].value == "ValidationState"
+    assert ws["BD8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ValidationState]")
+    assert ws.column_dimensions["BD"].hidden, "Calc validation helper column must be hidden"
     assert ws["H8"].value.startswith("=LET(")
     assert ws["H8"].number_format == "0.00"
 
@@ -148,7 +176,26 @@ def assert_calc_engine(ws) -> None:
 def assert_test_cases(ws) -> None:
     assert row_values(ws, 1, 1, 8) == TEST_HEADERS
     populated = [row for row in range(2, 101) if ws.cell(row=row, column=1).value]
-    assert len(populated) >= 6, f"Expected at least 6 test case rows, found {len(populated)}"
+    assert len(populated) >= 7, f"Expected at least 7 test case rows, found {len(populated)}"
+    expected_ids = [f"TEST-{index:02d}" for index in range(1, 8)]
+    assert [ws.cell(row=row, column=1).value for row in range(2, 9)] == expected_ids
+    assert ws["J1"].value == "OverallStatus"
+    assert ws["K1"].value == '=IF(COUNTIF(F2:F8,FALSE)=0,"PASS","FAIL")'
+    for row in range(2, 9):
+        actual = ws.cell(row=row, column=5).value
+        passed = ws.cell(row=row, column=6).value
+        requirement = ws.cell(row=row, column=7).value
+        assert isinstance(actual, str) and actual.startswith("="), f"E{row} must contain a workbook-native formula"
+        assert isinstance(passed, str) and passed.startswith("="), f"F{row} must contain a pass/fail formula"
+        assert requirement == f"TEST-{row - 1:02d}", f"G{row} requirement trace is wrong"
+    assert "09:00-17:00" in ws["C2"].value
+    assert "22:00-06:00" in ws["C3"].value
+    assert "08:15" in ws["C4"].value
+    assert 'MATCH("OWD",tblActivityCodes[Code],0)' in ws["E5"].value
+    assert all(code in ws["E6"].value for code in ["Brk", "Lch", "Mt", "Trn"])
+    for state in ["InvalidCode", "MissingRequirement", "Exact", "Under", "Over"]:
+        assert state in ws["E7"].value, f"TEST-06 missing {state}"
+    assert ws["E8"].value == '=IF(COUNTIF(F2:F7,FALSE)=0,"PASS","FAIL")'
 
 
 def assert_summary_dashboard(ws) -> None:

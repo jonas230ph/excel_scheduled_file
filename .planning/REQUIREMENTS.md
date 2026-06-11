@@ -48,21 +48,21 @@
 
 ### Validation and Conditional Formatting
 
-- [ ] **VALID-01**: Missing activity codes produce a visible invalid-code state.
-- [ ] **VALID-02**: Zero-length shifts produce a visible invalid-schedule state.
-- [ ] **VALID-03**: Duplicate employee/date/start/end/code rows produce a visible duplicate warning.
-- [ ] **VALID-04**: Blank selected date produces a visible missing-date state.
-- [ ] **VALID-05**: Conditional formatting distinguishes under, exact, over, nonproductive, invalid, and missing states.
+- [x] **VALID-01**: Missing activity codes produce a visible invalid-code state.
+- [x] **VALID-02**: Zero-length shifts produce a visible invalid-schedule state.
+- [x] **VALID-03**: Duplicate employee/date/start/end/code rows produce a visible duplicate warning.
+- [x] **VALID-04**: Blank selected date produces a visible missing-date state.
+- [x] **VALID-05**: Conditional formatting distinguishes under, exact, over, nonproductive, invalid, and missing states.
 
 ### Test Coverage
 
-- [ ] **TEST-01**: `TestCases` verifies a same-day shift such as `09:00-17:00`.
-- [ ] **TEST-02**: `TestCases` verifies an overnight shift such as `22:00-06:00`.
-- [ ] **TEST-03**: `TestCases` verifies interval boundary cases at shift start and shift end.
-- [ ] **TEST-04**: `TestCases` verifies `OWD` counts as staffed.
-- [ ] **TEST-05**: `TestCases` verifies `Brk`, `Lch`, `Mt`, and `Trn` display but do not count as staffed by default.
-- [ ] **TEST-06**: `TestCases` verifies missing code, blank requirement, exact, under, and over states.
-- [ ] **TEST-07**: `TestCases` exposes an overall pass/fail status for the workbook engine.
+- [x] **TEST-01**: `TestCases` verifies a same-day shift such as `09:00-17:00`.
+- [x] **TEST-02**: `TestCases` verifies an overnight shift such as `22:00-06:00`.
+- [x] **TEST-03**: `TestCases` verifies interval boundary cases at shift start and shift end.
+- [x] **TEST-04**: `TestCases` verifies `OWD` counts as staffed.
+- [x] **TEST-05**: `TestCases` verifies `Brk`, `Lch`, `Mt`, and `Trn` display but do not count as staffed by default.
+- [x] **TEST-06**: `TestCases` verifies missing code, blank requirement, exact, under, and over states.
+- [x] **TEST-07**: `TestCases` exposes an overall pass/fail status for the workbook engine.
 
 ## v2 Requirements
 
@@ -128,26 +128,26 @@
 | CALC-04 | Phase 2 | Complete |
 | CALC-05 | Phase 2 | Complete |
 | CALC-06 | Phase 4 | Complete |
-| VALID-01 | Phase 4 | Pending |
-| VALID-02 | Phase 4 | Pending |
-| VALID-03 | Phase 4 | Pending |
-| VALID-04 | Phase 4 | Pending |
-| VALID-05 | Phase 4 | Pending |
-| TEST-01 | Phase 5 | Pending |
-| TEST-02 | Phase 5 | Pending |
-| TEST-03 | Phase 5 | Pending |
-| TEST-04 | Phase 5 | Pending |
-| TEST-05 | Phase 5 | Pending |
-| TEST-06 | Phase 5 | Pending |
-| TEST-07 | Phase 5 | Pending |
+| VALID-01 | Phase 4 | Complete |
+| VALID-02 | Phase 4 | Complete |
+| VALID-03 | Phase 4 | Complete |
+| VALID-04 | Phase 4 | Complete |
+| VALID-05 | Phase 4 | Complete |
+| TEST-01 | Phase 5 | Complete |
+| TEST-02 | Phase 5 | Complete |
+| TEST-03 | Phase 5 | Complete |
+| TEST-04 | Phase 5 | Complete |
+| TEST-05 | Phase 5 | Complete |
+| TEST-06 | Phase 5 | Complete |
+| TEST-07 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total
 - Mapped to phases: 38
 - Unmapped: 0
-- Completed: 26
-- Remaining pending: 12
+- Completed: 38
+- Remaining pending: 0
 
 ---
 *Requirements defined: 2026-06-11*
-*Last updated: 2026-06-11 after Google Sheets compatibility and dashboard completion*
+*Last updated: 2026-06-11 after Phase 5 workbook-native test harness completion*

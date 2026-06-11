@@ -10,7 +10,7 @@ excel schedule/wfm_scheduling_matrix.xlsx
 
 ## Current Scope
 
-Phase 1 through Phase 3 are implemented:
+Phase 1 through Phase 5 are implemented:
 
 - Workbook tab structure and configurable activity-code tables.
 - Normalized staffing requirements by operational date and 30-minute interval.
@@ -18,12 +18,12 @@ Phase 1 through Phase 3 are implemented:
 - Live `Schedule_Matrix` grid with interval formulas from `00:00` through `23:30`.
 - Scheduled productive, required, and over/under summary rows.
 - `Summary_Dashboard` source formulas and net staffing variance chart.
+- Visible validation states for invalid activity codes, zero-length shifts, duplicate rows, blank selected date, and missing requirements.
+- Conditional formatting for productive, nonproductive, under, exact, over, invalid, duplicate, missing-date, and missing-requirement states.
+- Workbook-native `TestCases` formulas with expected-vs-actual checks and an overall pass/fail status.
 - Python verification tests for interval aggregation and workbook structure.
 
-Phase 4 and Phase 5 are still tracked for follow-up:
-
-- Phase 4: visible workbook validation states for invalid code, duplicate row, zero-length shift, missing selected date, and complete conditional-format states.
-- Phase 5: workbook-native `TestCases` formulas with an overall pass/fail status.
+Deferred V2 work remains out of scope for this MVP: forecasting, imports, optimization, macros, integrations, and enterprise workflow controls.
 
 ## Workbook Tabs
 
@@ -35,7 +35,7 @@ Phase 4 and Phase 5 are still tracked for follow-up:
 | `Calc_Engine` | Hidden formula layer for selected-day filtering and interval coverage math. |
 | `Schedule_Matrix` | Main planner view with metadata columns and 48 interval columns. |
 | `Summary_Dashboard` | Chart-ready interval summary for selected-day net staffing variance. |
-| `TestCases` | Workbook test harness placeholder for Phase 5. |
+| `TestCases` | Workbook-native expected-vs-actual checks and overall pass/fail status. |
 
 ## Key Sheet Anchors
 
@@ -202,14 +202,11 @@ git@github.com:jonas230ph/excel_scheduled_file.git
 | `ActiveActivityCodes` | `Config_Settings!$A$2:$A$13` |
 | `tblDailyMatrix` | `Schedule_Matrix!$A$1:$BC$257` |
 
-## Known Follow-Up Work
+## Deferred V2 Work
 
-Complete these before treating the workbook as a full Phase 5 release:
-
-1. Add visible validation states for invalid activity codes.
-2. Add visible validation states for zero-length shifts.
-3. Add duplicate schedule-row detection.
-4. Add missing selected-date handling.
-5. Expand conditional formatting for all validation states.
-6. Replace placeholder `TestCases` rows with workbook-native expected-vs-actual formulas.
-7. Add a `TestCases` overall pass/fail cell.
+- Erlang-C or equivalent forecasting.
+- Bulk roster imports and field mapping.
+- Solver-based schedule optimization.
+- VBA or Office Script scheduling automation.
+- Multi-skill, queue, channel, team, site, or location requirements.
+- External WFM, HRIS, payroll, or approval workflow integrations.

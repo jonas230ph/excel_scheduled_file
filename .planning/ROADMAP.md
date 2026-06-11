@@ -64,7 +64,7 @@
 
 ## Phase 4: Validation, Conditional Formatting, and Performance Hardening
 
-**Status:** In Progress
+**Status:** Complete
 
 **Goal:** Make data quality problems visible and keep recalculation responsive.
 
@@ -82,7 +82,7 @@
 
 ## Phase 5: Test Harness and Release Readiness
 
-**Status:** Pending
+**Status:** Complete
 
 **Goal:** Add in-workbook tests that prove the formula engine works before the workbook is considered ready.
 

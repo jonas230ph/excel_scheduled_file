@@ -12,7 +12,12 @@ from scripts.interval_engine import (
     interval_productive_fraction,
     row_interval_value,
 )
-from scripts.build_wfm_workbook import calc_coverage_formula, requirement_formula
+from scripts.build_wfm_workbook import (
+    calc_coverage_formula,
+    requirement_formula,
+    schedule_validation_formula,
+    selected_day_variance_formula,
+)
 
 
 PRODUCTIVE_CODES = {"OWD", "OT"}
@@ -123,6 +128,24 @@ class IntervalAggregationTests(unittest.TestCase):
         self.assertIn("COUNTIFS(tblRequirements[OperationalDate],$E$2", formula)
         self.assertIn('=0,""', formula)
         self.assertIn("SUMIFS(tblRequirements[RequiredHeadcount]", formula)
+
+    def test_generated_schedule_validation_formula_flags_phase4_states(self) -> None:
+        formula = schedule_validation_formula(42)
+
+        self.assertIn('COUNTA($A42:$F42)=0,""', formula)
+        self.assertIn('$C42="","MissingDate"', formula)
+        self.assertIn('$D42=$E42),"InvalidSchedule"', formula)
+        self.assertIn('COUNTIF(ActiveActivityCodes,$F42)=0,"InvalidCode"', formula)
+        self.assertIn('COUNTIFS(tblScheduleData[EmployeeID],$A42', formula)
+        self.assertIn('>1,"Duplicate","Valid"', formula)
+
+    def test_generated_variance_formula_flags_blank_selected_date_first(self) -> None:
+        formula = selected_day_variance_formula("X", 260, 261)
+
+        self.assertEqual(
+            formula,
+            '=IF($E$2="","MissingDate",IF(X$261="","MissingRequirement",ROUND(X$260-X$261,2)))',
+        )
 
 
 if __name__ == "__main__":

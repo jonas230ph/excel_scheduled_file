@@ -205,7 +205,7 @@ def calc_coverage_formula(row: int, column_letter: str) -> str:
         f"code,UPPER(TRIM(Schedule_Matrix!$D{row})),"
         f"rawStart,Schedule_Matrix!$F{row},"
         f"rawEnd,Schedule_Matrix!$G{row},"
-        "countsAsStaffed,IFERROR(--XLOOKUP(code,UPPER(tblActivityCodes[Code]),tblActivityCodes[CountsAsStaffed],0),0),"
+        "countsAsStaffed,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH(code,tblActivityCodes[Code],0)),0),"
         "startDT,IF(INT(rawStart)>0,rawStart,SelectedDate+MOD(rawStart,1)),"
         "endBase,IF(INT(rawEnd)>0,rawEnd,SelectedDate+MOD(rawEnd,1)),"
         "endDT,IF(endBase<=startDT,endBase+1,endBase),"
@@ -268,14 +268,21 @@ def populate_schedule_matrix(wb: Workbook) -> None:
             column=column,
             value=f'=IFNA(SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,tblRequirements[IntervalStart],{column_letter}$1),"")',
         )
-        ws.cell(row=7, column=column, value=f'=IF({column_letter}$6="","MissingRequirement",{column_letter}$5-{column_letter}$6)')
+        ws.cell(row=7, column=column, value=f'=IF({column_letter}$6="","MissingRequirement",ROUND({column_letter}$5-{column_letter}$6,2))')
         ws.cell(row=SUMMARY_SCHEDULED_ROW, column=column, value=f"=SUM(Calc_Engine!{column_letter}${ROSTER_START_ROW}:{column_letter}${ROSTER_END_ROW})")
         ws.cell(
             row=SUMMARY_REQUIRED_ROW,
             column=column,
             value=f'=IFNA(SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],$E$2,tblRequirements[IntervalStart],{column_letter}$1),"")',
         )
-        ws.cell(row=SUMMARY_VARIANCE_ROW, column=column, value=f'=IF({column_letter}${SUMMARY_REQUIRED_ROW}="","MissingRequirement",{column_letter}${SUMMARY_SCHEDULED_ROW}-{column_letter}${SUMMARY_REQUIRED_ROW})')
+        ws.cell(
+            row=SUMMARY_VARIANCE_ROW,
+            column=column,
+            value=(
+                f'=IF({column_letter}${SUMMARY_REQUIRED_ROW}="","MissingRequirement",'
+                f"ROUND({column_letter}${SUMMARY_SCHEDULED_ROW}-{column_letter}${SUMMARY_REQUIRED_ROW},2))"
+            ),
+        )
 
     add_conditional_formatting(ws)
 
@@ -368,6 +375,11 @@ def format_workbook(wb: Workbook) -> None:
     for column in range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1):
         matrix.cell(row=1, column=column).number_format = "hh:mm"
         calc.cell(row=1, column=column).number_format = "hh:mm"
+        for row in [5, 6, 7, SUMMARY_SCHEDULED_ROW, SUMMARY_REQUIRED_ROW, SUMMARY_VARIANCE_ROW]:
+            matrix.cell(row=row, column=column).number_format = "0.00"
+            calc.cell(row=row, column=column).number_format = "0.00"
+        for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
+            calc.cell(row=row, column=column).number_format = "0.00"
     calc.sheet_state = "hidden"
 
 

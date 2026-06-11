@@ -12,6 +12,7 @@ from scripts.interval_engine import (
     interval_productive_fraction,
     row_interval_value,
 )
+from scripts.build_wfm_workbook import calc_coverage_formula
 
 
 PRODUCTIVE_CODES = {"OWD", "OT"}
@@ -109,7 +110,13 @@ class IntervalAggregationTests(unittest.TestCase):
             0.5,
         )
 
+    def test_generated_coverage_formula_uses_import_safe_staffed_lookup(self) -> None:
+        formula = calc_coverage_formula(8, "X")
+
+        self.assertNotIn("XLOOKUP(code,UPPER(", formula)
+        self.assertIn("INDEX(tblActivityCodes[CountsAsStaffed]", formula)
+        self.assertIn("MATCH(code,tblActivityCodes[Code],0)", formula)
+
 
 if __name__ == "__main__":
     unittest.main()
-

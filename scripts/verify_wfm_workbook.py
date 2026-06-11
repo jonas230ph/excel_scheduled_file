@@ -117,9 +117,12 @@ def assert_schedule_matrix(ws) -> None:
     assert ws["G262"].value == "Over/Under"
     assert ws["G202"].value == "=Calc_Engine!G202"
     assert ws["H5"].value == "=SUM(Calc_Engine!H$8:H$257)"
-    assert ws["H7"].value == '=IF(H$6="","MissingRequirement",H$5-H$6)'
+    assert ws["H5"].number_format == "0.00"
+    assert ws["H7"].value == '=IF(H$6="","MissingRequirement",ROUND(H$5-H$6,2))'
     assert ws["H260"].value == "=SUM(Calc_Engine!H$8:H$257)"
-    assert ws["H262"].value == '=IF(H$261="","MissingRequirement",H$260-H$261)'
+    assert ws["H260"].number_format == "0.00"
+    assert ws["H262"].value == '=IF(H$261="","MissingRequirement",ROUND(H$260-H$261,2))'
+    assert ws["H262"].number_format == "0.00"
     assert ws["A8"].value == "=Calc_Engine!A8"
     assert ws["F8"].value == "=Calc_Engine!F8"
     assert ws["G8"].value == "=Calc_Engine!G8"
@@ -134,6 +137,7 @@ def assert_calc_engine(ws) -> None:
     assert ws["D8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ActivityCode]")
     assert ws["F8"].value.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[ShiftStart]")
     assert ws["H8"].value.startswith("=LET(")
+    assert ws["H8"].number_format == "0.00"
 
 
 def assert_test_cases(ws) -> None:

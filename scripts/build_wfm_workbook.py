@@ -9,6 +9,7 @@ from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.workbook.defined_name import DefinedName
@@ -26,6 +27,27 @@ SUMMARY_VARIANCE_ROW = 262
 INTERVAL_START_COLUMN = 8
 INTERVAL_END_COLUMN = 55
 VALIDATION_STATE_COLUMN = 56
+SCHEDULE_HELPER_START_COLUMN = 57
+SELECTED_DATE_REF = "Schedule_Matrix!$E$2"
+SCHEDULE_EXTRA_FIELDS = [
+    "Break1Start",
+    "Break1End",
+    "Break2Start",
+    "Break2End",
+    "LunchStart",
+    "LunchEnd",
+    "Adhoc1Code",
+    "Adhoc1Start",
+    "Adhoc1End",
+    "Adhoc2Code",
+    "Adhoc2Start",
+    "Adhoc2End",
+    "Adhoc3Code",
+    "Adhoc3Start",
+    "Adhoc3End",
+]
+SCHEDULE_HELPER_END_COLUMN = SCHEDULE_HELPER_START_COLUMN + len(SCHEDULE_EXTRA_FIELDS) - 1
+SCHEDULE_EXTRA_TIME_COLUMNS = [12, 13, 14, 15, 16, 17, 19, 20, 22, 23, 25, 26]
 SHEETS = [
     "Config_Settings",
     "Staffing_Requirements",
@@ -56,6 +78,13 @@ def add_name(wb: Workbook, name: str, refers_to: str) -> None:
 def interval_time(index: int) -> time:
     minutes = index * 30
     return time(minutes // 60, minutes % 60)
+
+
+def schedule_helper_columns() -> dict[str, str]:
+    return {
+        field: get_column_letter(SCHEDULE_HELPER_START_COLUMN + index)
+        for index, field in enumerate(SCHEDULE_EXTRA_FIELDS)
+    }
 
 
 def setup_workbook() -> Workbook:
@@ -167,12 +196,40 @@ def populate_schedule_data(ws) -> None:
         "Notes",
         "ValidationState",
         "SourceRowID",
+        *SCHEDULE_EXTRA_FIELDS,
     ]
     ws.append(headers)
     rows = [
-        ("E001", "Avery Chen", SAMPLE_DATE, datetime(2026, 6, 11, 8, 15), datetime(2026, 6, 11, 17, 0), "OWD", 8, "OWD", "Partial first interval", "", 1),
-        ("E002", "Blake Diaz", SAMPLE_DATE, datetime(2026, 6, 11, 23, 45), datetime(2026, 6, 12, 2, 15), "OWD", 8, "OWD", "Overnight", "", 2),
-        ("E003", "Casey Singh", SAMPLE_DATE, datetime(2026, 6, 11, 12, 0), datetime(2026, 6, 11, 12, 30), "Lch", 8, "Lch", "Nonproductive", "", 3),
+        (
+            "E001",
+            "Avery Chen",
+            SAMPLE_DATE,
+            datetime(2026, 6, 11, 8, 15),
+            datetime(2026, 6, 11, 17, 0),
+            "OWD",
+            8,
+            "OWD",
+            "Partial first interval with breaks",
+            "",
+            1,
+            time(10, 0),
+            time(10, 15),
+            time(15, 0),
+            time(15, 15),
+            time(12, 0),
+            time(12, 30),
+            "Mt",
+            time(14, 0),
+            time(14, 30),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ),
+        ("E002", "Blake Diaz", SAMPLE_DATE, datetime(2026, 6, 11, 23, 45), datetime(2026, 6, 12, 2, 15), "OWD", 8, "OWD", "Overnight", "", 2, *[""] * len(SCHEDULE_EXTRA_FIELDS)),
+        ("E003", "Casey Singh", SAMPLE_DATE, datetime(2026, 6, 11, 12, 0), datetime(2026, 6, 11, 12, 30), "Lch", 8, "Lch", "Nonproductive", "", 3, *[""] * len(SCHEDULE_EXTRA_FIELDS)),
     ]
     for row in rows:
         ws.append(row)
@@ -180,12 +237,14 @@ def populate_schedule_data(ws) -> None:
         ws.cell(row=row_index, column=3).number_format = "yyyy-mm-dd"
         ws.cell(row=row_index, column=4).number_format = "yyyy-mm-dd hh:mm"
         ws.cell(row=row_index, column=5).number_format = "yyyy-mm-dd hh:mm"
+        for column in SCHEDULE_EXTRA_TIME_COLUMNS:
+            ws.cell(row=row_index, column=column).number_format = "hh:mm"
     for row_index in range(len(rows) + 2, 1001):
         ws.cell(row=row_index, column=1, value="")
     for row_index in range(2, 1001):
         ws.cell(row=row_index, column=10, value=schedule_validation_formula(row_index))
     add_schedule_data_conditional_formatting(ws)
-    add_table(ws, "tblScheduleData", "A1:K1000")
+    add_table(ws, "tblScheduleData", "A1:Z1000")
 
 
 def schedule_validation_formula(row: int) -> str:
@@ -202,40 +261,110 @@ def schedule_validation_formula(row: int) -> str:
     )
 
 
+def window_let_bindings(prefix: str, start_var: str, end_var: str, selected_date_ref: str) -> list[str]:
+    return [
+        f"{prefix}StartDT,IF({start_var}=\"\",0,IF(INT({start_var})>0,{start_var},{selected_date_ref}+MOD({start_var},1)))",
+        f"{prefix}EndBase,IF({end_var}=\"\",0,IF(INT({end_var})>0,{end_var},{selected_date_ref}+MOD({end_var},1)))",
+        f"{prefix}EndDT,IF(OR({start_var}=\"\",{end_var}=\"\"),0,IF({prefix}EndBase<={prefix}StartDT,{prefix}EndBase+1,{prefix}EndBase))",
+        f"{prefix}Overlap,IF(OR({start_var}=\"\",{end_var}=\"\",baseOverlap=0),0,MAX(0,MIN({prefix}EndDT,intervalEnd)-MAX({prefix}StartDT,intervalStart)))",
+    ]
+
+
 def matrix_visible_formula(row: int, column_letter: str) -> str:
+    helpers = schedule_helper_columns()
+    assignments = [
+        f"id,$A{row}",
+        f"code,UPPER(TRIM($D{row}))",
+        f"rawStart,$F{row}",
+        f"rawEnd,$G{row}",
+        f"Break1Start,${helpers['Break1Start']}{row}",
+        f"Break1End,${helpers['Break1End']}{row}",
+        f"Break2Start,${helpers['Break2Start']}{row}",
+        f"Break2End,${helpers['Break2End']}{row}",
+        f"LunchStart,${helpers['LunchStart']}{row}",
+        f"LunchEnd,${helpers['LunchEnd']}{row}",
+        f"Adhoc1Code,UPPER(TRIM(${helpers['Adhoc1Code']}{row}))",
+        f"Adhoc1Start,${helpers['Adhoc1Start']}{row}",
+        f"Adhoc1End,${helpers['Adhoc1End']}{row}",
+        f"Adhoc2Code,UPPER(TRIM(${helpers['Adhoc2Code']}{row}))",
+        f"Adhoc2Start,${helpers['Adhoc2Start']}{row}",
+        f"Adhoc2End,${helpers['Adhoc2End']}{row}",
+        f"Adhoc3Code,UPPER(TRIM(${helpers['Adhoc3Code']}{row}))",
+        f"Adhoc3Start,${helpers['Adhoc3Start']}{row}",
+        f"Adhoc3End,${helpers['Adhoc3End']}{row}",
+        f"startDT,IF(INT(rawStart)>0,rawStart,$E$2+MOD(rawStart,1))",
+        f"endBase,IF(INT(rawEnd)>0,rawEnd,$E$2+MOD(rawEnd,1))",
+        "endDT,IF(endBase<=startDT,endBase+1,endBase)",
+        f"intervalStart,$E$2+{column_letter}$1",
+        "intervalEnd,intervalStart+TIME(0,30,0)",
+        "baseOverlap,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart))",
+        *window_let_bindings("break1", "Break1Start", "Break1End", "$E$2"),
+        *window_let_bindings("break2", "Break2Start", "Break2End", "$E$2"),
+        *window_let_bindings("lunch", "LunchStart", "LunchEnd", "$E$2"),
+        *window_let_bindings("adhoc1", "Adhoc1Start", "Adhoc1End", "$E$2"),
+        *window_let_bindings("adhoc2", "Adhoc2Start", "Adhoc2End", "$E$2"),
+        *window_let_bindings("adhoc3", "Adhoc3Start", "Adhoc3End", "$E$2"),
+    ]
     return (
         "=LET("
-        f"id,$A{row},"
-        f"code,UPPER(TRIM($D{row})),"
-        f"rawStart,$F{row},"
-        f"rawEnd,$G{row},"
-        f"startDT,IF(INT(rawStart)>0,rawStart,$E$2+MOD(rawStart,1)),"
-        f"endBase,IF(INT(rawEnd)>0,rawEnd,$E$2+MOD(rawEnd,1)),"
-        "endDT,IF(endBase<=startDT,endBase+1,endBase),"
-        f"intervalStart,$E$2+{column_letter}$1,"
-        "intervalEnd,intervalStart+TIME(0,30,0),"
-        "overlapDays,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart)),"
-        'IF(OR(id="",code="",rawStart="",rawEnd="",rawStart=rawEnd),"",IF(overlapDays>0,code,""))'
-        ")"
+        + ",".join(assignments)
+        + ',IF(OR(id="",code="",rawStart="",rawEnd="",rawStart=rawEnd,baseOverlap=0),"",'
+        + 'IF(AND(Adhoc1Code<>"",adhoc1Overlap>0),Adhoc1Code,'
+        + 'IF(AND(Adhoc2Code<>"",adhoc2Overlap>0),Adhoc2Code,'
+        + 'IF(AND(Adhoc3Code<>"",adhoc3Overlap>0),Adhoc3Code,'
+        + 'IF(lunchOverlap>0,"LCH",IF(OR(break1Overlap>0,break2Overlap>0),"BRK",code))))))'
+        + ")"
     )
 
 
 def calc_coverage_formula(row: int, column_letter: str) -> str:
+    helpers = schedule_helper_columns()
+    assignments = [
+        f"id,Schedule_Matrix!$A{row}",
+        f"code,UPPER(TRIM(Schedule_Matrix!$D{row}))",
+        f"rawStart,Schedule_Matrix!$F{row}",
+        f"rawEnd,Schedule_Matrix!$G{row}",
+        f"Break1Start,Schedule_Matrix!${helpers['Break1Start']}{row}",
+        f"Break1End,Schedule_Matrix!${helpers['Break1End']}{row}",
+        f"Break2Start,Schedule_Matrix!${helpers['Break2Start']}{row}",
+        f"Break2End,Schedule_Matrix!${helpers['Break2End']}{row}",
+        f"LunchStart,Schedule_Matrix!${helpers['LunchStart']}{row}",
+        f"LunchEnd,Schedule_Matrix!${helpers['LunchEnd']}{row}",
+        f"Adhoc1Code,UPPER(TRIM(Schedule_Matrix!${helpers['Adhoc1Code']}{row}))",
+        f"Adhoc1Start,Schedule_Matrix!${helpers['Adhoc1Start']}{row}",
+        f"Adhoc1End,Schedule_Matrix!${helpers['Adhoc1End']}{row}",
+        f"Adhoc2Code,UPPER(TRIM(Schedule_Matrix!${helpers['Adhoc2Code']}{row}))",
+        f"Adhoc2Start,Schedule_Matrix!${helpers['Adhoc2Start']}{row}",
+        f"Adhoc2End,Schedule_Matrix!${helpers['Adhoc2End']}{row}",
+        f"Adhoc3Code,UPPER(TRIM(Schedule_Matrix!${helpers['Adhoc3Code']}{row}))",
+        f"Adhoc3Start,Schedule_Matrix!${helpers['Adhoc3Start']}{row}",
+        f"Adhoc3End,Schedule_Matrix!${helpers['Adhoc3End']}{row}",
+        "countsAsStaffed,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH(code,tblActivityCodes[Code],0)),0)",
+        'breakCount,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Brk",tblActivityCodes[Code],0)),0)',
+        'lunchCount,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Lch",tblActivityCodes[Code],0)),0)',
+        "adhoc1Count,IF(Adhoc1Code=\"\",0,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH(Adhoc1Code,tblActivityCodes[Code],0)),0))",
+        "adhoc2Count,IF(Adhoc2Code=\"\",0,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH(Adhoc2Code,tblActivityCodes[Code],0)),0))",
+        "adhoc3Count,IF(Adhoc3Code=\"\",0,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH(Adhoc3Code,tblActivityCodes[Code],0)),0))",
+        f"startDT,IF(INT(rawStart)>0,rawStart,{SELECTED_DATE_REF}+MOD(rawStart,1))",
+        f"endBase,IF(INT(rawEnd)>0,rawEnd,{SELECTED_DATE_REF}+MOD(rawEnd,1))",
+        "endDT,IF(endBase<=startDT,endBase+1,endBase)",
+        f"intervalStart,{SELECTED_DATE_REF}+Schedule_Matrix!{column_letter}$1",
+        "intervalEnd,intervalStart+TIME(0,30,0)",
+        "baseOverlap,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart))",
+        *window_let_bindings("break1", "Break1Start", "Break1End", SELECTED_DATE_REF),
+        *window_let_bindings("break2", "Break2Start", "Break2End", SELECTED_DATE_REF),
+        *window_let_bindings("lunch", "LunchStart", "LunchEnd", SELECTED_DATE_REF),
+        *window_let_bindings("adhoc1", "Adhoc1Start", "Adhoc1End", SELECTED_DATE_REF),
+        *window_let_bindings("adhoc2", "Adhoc2Start", "Adhoc2End", SELECTED_DATE_REF),
+        *window_let_bindings("adhoc3", "Adhoc3Start", "Adhoc3End", SELECTED_DATE_REF),
+        "baseCoverage,baseOverlap/TIME(0,30,0)*countsAsStaffed",
+        "overlayCoverage,break1Overlap/TIME(0,30,0)*(breakCount-countsAsStaffed)+break2Overlap/TIME(0,30,0)*(breakCount-countsAsStaffed)+lunchOverlap/TIME(0,30,0)*(lunchCount-countsAsStaffed)+adhoc1Overlap/TIME(0,30,0)*(adhoc1Count-countsAsStaffed)+adhoc2Overlap/TIME(0,30,0)*(adhoc2Count-countsAsStaffed)+adhoc3Overlap/TIME(0,30,0)*(adhoc3Count-countsAsStaffed)",
+    ]
     return (
         "=LET("
-        f"id,Schedule_Matrix!$A{row},"
-        f"code,UPPER(TRIM(Schedule_Matrix!$D{row})),"
-        f"rawStart,Schedule_Matrix!$F{row},"
-        f"rawEnd,Schedule_Matrix!$G{row},"
-        "countsAsStaffed,IFERROR(--INDEX(tblActivityCodes[CountsAsStaffed],MATCH(code,tblActivityCodes[Code],0)),0),"
-        "startDT,IF(INT(rawStart)>0,rawStart,SelectedDate+MOD(rawStart,1)),"
-        "endBase,IF(INT(rawEnd)>0,rawEnd,SelectedDate+MOD(rawEnd,1)),"
-        "endDT,IF(endBase<=startDT,endBase+1,endBase),"
-        f"intervalStart,SelectedDate+Schedule_Matrix!{column_letter}$1,"
-        "intervalEnd,intervalStart+TIME(0,30,0),"
-        "overlapDays,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart)),"
-        'IF(OR(id="",code="",rawStart="",rawEnd="",rawStart=rawEnd,countsAsStaffed=0),0,overlapDays/TIME(0,30,0))'
-        ")"
+        + ",".join(assignments)
+        + ',IF(OR(id="",code="",rawStart="",rawEnd="",rawStart=rawEnd),0,MAX(0,baseCoverage+overlayCoverage))'
+        + ")"
     )
 
 
@@ -258,9 +387,19 @@ def selected_day_variance_formula(column_letter: str, scheduled_row: int, requir
 
 def selected_schedule_formula(field_name: str, row: int) -> str:
     relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
+    start_dt = "(tblScheduleData[ShiftStart]+(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate])"
+    end_base = "(tblScheduleData[ShiftEnd]+(INT(tblScheduleData[ShiftEnd])=0)*tblScheduleData[OperationalDate])"
+    end_dt = f"({end_base}+({end_base}<={start_dt}))"
     return (
         f'=IFERROR(INDEX(FILTER(tblScheduleData[{field_name}],'
-        f"tblScheduleData[OperationalDate]=SelectedDate),{relative_index}),\"\")"
+        '(tblScheduleData[EmployeeID]<>"")*'
+        '(tblScheduleData[ShiftStart]<>"")*'
+        '(tblScheduleData[ShiftEnd]<>"")*'
+        '(tblScheduleData[OperationalDate]<>"")*'
+        f"({SELECTED_DATE_REF}<>\"\")*"
+        f"({start_dt}<{SELECTED_DATE_REF}+1)*"
+        f"({end_dt}>{SELECTED_DATE_REF})"
+        f'),{relative_index}),\"\")'
     )
 
 
@@ -277,6 +416,10 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         calc.cell(row=1, column=column, value=f"=Schedule_Matrix!{ws.cell(row=1, column=column).coordinate}")
     ws.cell(row=1, column=VALIDATION_STATE_COLUMN, value="ValidationState")
     calc.cell(row=1, column=VALIDATION_STATE_COLUMN, value="ValidationState")
+    for offset, field_name in enumerate(SCHEDULE_EXTRA_FIELDS):
+        column = SCHEDULE_HELPER_START_COLUMN + offset
+        ws.cell(row=1, column=column, value=field_name)
+        calc.cell(row=1, column=column, value=field_name)
 
     ws["E2"] = SAMPLE_DATE
     ws["G5"] = "Scheduled Productive"
@@ -291,13 +434,17 @@ def populate_schedule_matrix(wb: Workbook) -> None:
         calc.cell(row=row, column=2, value=selected_schedule_formula("Name", row))
         calc.cell(row=row, column=3, value=selected_schedule_formula("ContractualHours", row))
         calc.cell(row=row, column=4, value=selected_schedule_formula("ActivityCode", row))
-        calc.cell(row=row, column=5, value=f'=IF(Calc_Engine!A{row}="","",SelectedDate)')
+        calc.cell(row=row, column=5, value=f'=IF(Calc_Engine!A{row}="","",{SELECTED_DATE_REF})')
         calc.cell(row=row, column=6, value=selected_schedule_formula("ShiftStart", row))
         calc.cell(row=row, column=7, value=selected_schedule_formula("ShiftEnd", row))
         calc.cell(row=row, column=VALIDATION_STATE_COLUMN, value=selected_schedule_formula("ValidationState", row))
+        for offset, field_name in enumerate(SCHEDULE_EXTRA_FIELDS):
+            calc.cell(row=row, column=SCHEDULE_HELPER_START_COLUMN + offset, value=selected_schedule_formula(field_name, row))
         for column in range(1, 8):
             ws.cell(row=row, column=column, value=f"=Calc_Engine!{ws.cell(row=row, column=column).coordinate}")
         ws.cell(row=row, column=VALIDATION_STATE_COLUMN, value=f"=Calc_Engine!{ws.cell(row=row, column=VALIDATION_STATE_COLUMN).coordinate}")
+        for column in range(SCHEDULE_HELPER_START_COLUMN, SCHEDULE_HELPER_END_COLUMN + 1):
+            ws.cell(row=row, column=column, value=f"=Calc_Engine!{ws.cell(row=row, column=column).coordinate}")
         for column in range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1):
             column_letter = ws.cell(row=1, column=column).column_letter
             ws.cell(row=row, column=column, value=matrix_visible_formula(row, column_letter))
@@ -389,7 +536,7 @@ def add_schedule_data_conditional_formatting(ws) -> None:
     invalid_schedule_fill = PatternFill("solid", fgColor="FFD966")
     duplicate_fill = PatternFill("solid", fgColor="D9EAD3")
     missing_date_fill = PatternFill("solid", fgColor="C9DAF8")
-    data_range = "A2:K1000"
+    data_range = "A2:Z1000"
     ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="InvalidCode"'], fill=invalid_code_fill))
     ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="InvalidSchedule"'], fill=invalid_schedule_fill))
     ws.conditional_formatting.add(data_range, FormulaRule(formula=['$J2="Duplicate"'], fill=duplicate_fill))
@@ -400,7 +547,7 @@ def populate_test_cases(ws) -> None:
     headers = ["TestID", "Scenario", "Input", "Expected", "Actual", "Pass", "Requirement", "Notes"]
     ws.append(headers)
     ws["J1"] = "OverallStatus"
-    ws["K1"] = '=IF(COUNTIF(F2:F8,FALSE)=0,"PASS","FAIL")'
+    ws["K1"] = '=IF(COUNTIF(F2:F11,FALSE)=0,"PASS","FAIL")'
     rows = [
         (
             "TEST-01",
@@ -472,6 +619,36 @@ def populate_test_cases(ws) -> None:
             "TEST-07",
             "Exposes an overall pass/fail status for workbook formula tests.",
         ),
+        (
+            "TEST-08",
+            "Scheduled 15-minute break overlay",
+            "OWD 10:00-10:30 with Brk 10:00-10:15",
+            0.5,
+            '=MAX(0,1+((TIME(10,15,0)-TIME(10,0,0))/TIME(0,30,0))*(N(INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Brk",tblActivityCodes[Code],0)))-N(INDEX(tblActivityCodes[CountsAsStaffed],MATCH("OWD",tblActivityCodes[Code],0)))))',
+            "=ABS(E9-D9)<0.000001",
+            "TEST-08",
+            "Verifies a 15-minute break subtracts half of one 30-minute interval.",
+        ),
+        (
+            "TEST-09",
+            "Scheduled lunch overlay",
+            "OWD 12:00-12:30 with Lch 12:00-12:30",
+            0,
+            '=MAX(0,1+((TIME(12,30,0)-TIME(12,0,0))/TIME(0,30,0))*(N(INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Lch",tblActivityCodes[Code],0)))-N(INDEX(tblActivityCodes[CountsAsStaffed],MATCH("OWD",tblActivityCodes[Code],0)))))',
+            "=ABS(E10-D10)<0.000001",
+            "TEST-09",
+            "Verifies a full lunch interval removes staffed coverage.",
+        ),
+        (
+            "TEST-10",
+            "Scheduled ad hoc overlay",
+            "OWD 14:00-14:30 with Mt 14:00-14:30",
+            0,
+            '=MAX(0,1+((TIME(14,30,0)-TIME(14,0,0))/TIME(0,30,0))*(N(INDEX(tblActivityCodes[CountsAsStaffed],MATCH("Mt",tblActivityCodes[Code],0)))-N(INDEX(tblActivityCodes[CountsAsStaffed],MATCH("OWD",tblActivityCodes[Code],0)))))',
+            "=ABS(E11-D11)<0.000001",
+            "TEST-10",
+            "Verifies an ad hoc meeting interval removes staffed coverage.",
+        ),
     ]
     for row in rows:
         ws.append(row)
@@ -500,6 +677,8 @@ def setup_names_and_validation(wb: Workbook) -> None:
     validation = DataValidation(type="list", formula1="=ActiveActivityCodes", allow_blank=True)
     schedule.add_data_validation(validation)
     validation.add("F2:F1000")
+    for code_range in ["R2:R1000", "U2:U1000", "X2:X1000"]:
+        validation.add(code_range)
 
 
 def format_workbook(wb: Workbook) -> None:
@@ -523,16 +702,24 @@ def format_workbook(wb: Workbook) -> None:
     matrix = wb["Schedule_Matrix"]
     calc = wb["Calc_Engine"]
     dashboard = wb["Summary_Dashboard"]
+    schedule = wb["Schedule_Data"]
     for ws in [matrix, calc]:
         for column in range(1, 8):
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 18
         for column in range(8, 56):
             ws.column_dimensions[ws.cell(row=1, column=column).column_letter].width = 8
-        ws.column_dimensions[ws.cell(row=1, column=VALIDATION_STATE_COLUMN).column_letter].hidden = True
+        for column in range(VALIDATION_STATE_COLUMN, SCHEDULE_HELPER_END_COLUMN + 1):
+            ws.column_dimensions[ws.cell(row=1, column=column).column_letter].hidden = True
         for row in [1, 5, 6, 7, SUMMARY_SCHEDULED_ROW, SUMMARY_REQUIRED_ROW, SUMMARY_VARIANCE_ROW]:
             for cell in ws[row]:
                 cell.font = Font(bold=True)
     matrix["E2"].number_format = "yyyy-mm-dd"
+    for row in range(2, 1001):
+        schedule.cell(row=row, column=3).number_format = "yyyy-mm-dd"
+        schedule.cell(row=row, column=4).number_format = "yyyy-mm-dd hh:mm"
+        schedule.cell(row=row, column=5).number_format = "yyyy-mm-dd hh:mm"
+        for column in SCHEDULE_EXTRA_TIME_COLUMNS:
+            schedule.cell(row=row, column=column).number_format = "hh:mm"
     for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
         for ws in [matrix, calc]:
             ws.cell(row=row, column=5).number_format = "yyyy-mm-dd"
@@ -550,6 +737,14 @@ def format_workbook(wb: Workbook) -> None:
         dashboard.cell(row=row, column=1).number_format = "hh:mm"
         for column in range(2, 5):
             dashboard.cell(row=row, column=column).number_format = "0.00"
+    tests = wb["TestCases"]
+    for row in [*range(2, 7), *range(9, 12)]:
+        tests.cell(row=row, column=4).number_format = "0.00"
+        tests.cell(row=row, column=5).number_format = "0.00"
+    for row in [7, 8]:
+        tests.cell(row=row, column=4).number_format = "@"
+        tests.cell(row=row, column=5).number_format = "@"
+    tests["K1"].number_format = "@"
     calc.sheet_state = "hidden"
 
 

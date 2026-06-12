@@ -266,7 +266,8 @@ def window_let_bindings(prefix: str, start_var: str, end_var: str, selected_date
         f"{prefix}StartDT,IF({start_var}=\"\",0,IF(INT({start_var})>0,{start_var},{selected_date_ref}+MOD({start_var},1)))",
         f"{prefix}EndBase,IF({end_var}=\"\",0,IF(INT({end_var})>0,{end_var},{selected_date_ref}+MOD({end_var},1)))",
         f"{prefix}EndDT,IF(OR({start_var}=\"\",{end_var}=\"\"),0,IF({prefix}EndBase<={prefix}StartDT,{prefix}EndBase+1,{prefix}EndBase))",
-        f"{prefix}Overlap,IF(OR({start_var}=\"\",{end_var}=\"\",baseOverlap=0),0,MAX(0,MIN({prefix}EndDT,intervalEnd)-MAX({prefix}StartDT,intervalStart)))",
+        f"{prefix}RawOverlap,IF(OR({start_var}=\"\",{end_var}=\"\",baseOverlap=0),0,MAX(0,MIN({prefix}EndDT,intervalEnd)-MAX({prefix}StartDT,intervalStart)))",
+        f"{prefix}Overlap,IF({prefix}RawOverlap<TIME(0,0,1),0,{prefix}RawOverlap)",
     ]
 
 
@@ -297,7 +298,8 @@ def matrix_visible_formula(row: int, column_letter: str) -> str:
         "endDT,IF(endBase<=startDT,endBase+1,endBase)",
         f"intervalStart,$E$2+{column_letter}$1",
         "intervalEnd,intervalStart+TIME(0,30,0)",
-        "baseOverlap,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart))",
+        "baseRawOverlap,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart))",
+        "baseOverlap,IF(baseRawOverlap<TIME(0,0,1),0,baseRawOverlap)",
         *window_let_bindings("break1", "Break1Start", "Break1End", "$E$2"),
         *window_let_bindings("break2", "Break2Start", "Break2End", "$E$2"),
         *window_let_bindings("lunch", "LunchStart", "LunchEnd", "$E$2"),
@@ -350,7 +352,8 @@ def calc_coverage_formula(row: int, column_letter: str) -> str:
         "endDT,IF(endBase<=startDT,endBase+1,endBase)",
         f"intervalStart,{SELECTED_DATE_REF}+Schedule_Matrix!{column_letter}$1",
         "intervalEnd,intervalStart+TIME(0,30,0)",
-        "baseOverlap,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart))",
+        "baseRawOverlap,MAX(0,MIN(endDT,intervalEnd)-MAX(startDT,intervalStart))",
+        "baseOverlap,IF(baseRawOverlap<TIME(0,0,1),0,baseRawOverlap)",
         *window_let_bindings("break1", "Break1Start", "Break1End", SELECTED_DATE_REF),
         *window_let_bindings("break2", "Break2Start", "Break2End", SELECTED_DATE_REF),
         *window_let_bindings("lunch", "LunchStart", "LunchEnd", SELECTED_DATE_REF),

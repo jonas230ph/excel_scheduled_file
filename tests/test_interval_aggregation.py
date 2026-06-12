@@ -194,6 +194,17 @@ class IntervalAggregationTests(unittest.TestCase):
                 for volatile_function in ["OFFSET(", "INDIRECT(", "TODAY(", "NOW(", "RAND(", "RANDBETWEEN("]:
                     self.assertNotIn(volatile_function, formula.upper())
 
+    def test_generated_exception_formulas_ignore_boundary_precision_noise(self) -> None:
+        visible_formula = matrix_visible_formula(8, "X")
+        coverage_formula = calc_coverage_formula(8, "X")
+
+        self.assertIn("RawOverlap", visible_formula)
+        self.assertIn("RawOverlap", coverage_formula)
+        self.assertIn("baseRawOverlap", visible_formula)
+        self.assertIn("baseRawOverlap", coverage_formula)
+        self.assertIn("TIME(0,0,1)", visible_formula)
+        self.assertIn("TIME(0,0,1)", coverage_formula)
+
     def test_break_lunch_and_adhoc_overlay_expected_staffed_values(self) -> None:
         shift_start = dt("2026-06-11 08:15")
         shift_end = dt("2026-06-11 17:00")

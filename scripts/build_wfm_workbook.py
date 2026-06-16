@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from openpyxl import Workbook
-from openpyxl.chart import LineChart, Reference
+from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -174,12 +174,12 @@ def populate_config(ws) -> None:
 
 def populate_requirements(ws) -> None:
     ws.append(["OperationalDate", "IntervalStart", "RequiredHeadcount"])
-    for index in range(48):
-        interval = interval_time(index)
-        required = 4 if 8 <= interval.hour < 18 else 2
-        ws.append([SAMPLE_DATE, interval, required])
-    for row_index in range(50, 338):
-        ws.cell(row=row_index, column=1, value="")
+    for day_offset in range(7):
+        operational_date = SAMPLE_DATE + timedelta(days=day_offset)
+        for index in range(48):
+            interval = interval_time(index)
+            required = 4 if 8 <= interval.hour < 18 else 2
+            ws.append([operational_date, interval, required])
     add_table(ws, "tblRequirements", "A1:C337")
 
 
@@ -406,6 +406,63 @@ def selected_schedule_formula(field_name: str, row: int) -> str:
     )
 
 
+def weekly_window_bindings(prefix: str, start_field: str, end_field: str) -> list[str]:
+    return [
+        f"{prefix}StartRaw,tblScheduleData[{start_field}]",
+        f"{prefix}EndRaw,tblScheduleData[{end_field}]",
+        f"{prefix}StartBase,IF({prefix}StartRaw=\"\",0,IF(INT({prefix}StartRaw)>0,{prefix}StartRaw,opDate+MOD({prefix}StartRaw,1)))",
+        f"{prefix}StartDT,IF({prefix}StartRaw=\"\",0,{prefix}StartBase+({prefix}StartBase<startDT))",
+        f"{prefix}EndBase,IF({prefix}EndRaw=\"\",0,IF(INT({prefix}EndRaw)>0,{prefix}EndRaw,opDate+MOD({prefix}EndRaw,1)))",
+        f"{prefix}EndAdjusted,IF({prefix}EndRaw=\"\",0,{prefix}EndBase+({prefix}EndBase<startDT))",
+        f"{prefix}EndDT,IF(({prefix}StartRaw=\"\")+({prefix}EndRaw=\"\"),0,IF({prefix}EndAdjusted<={prefix}StartDT,{prefix}EndAdjusted+1,{prefix}EndAdjusted))",
+        f"{prefix}ClipEndDay,IF({prefix}EndDT<dayEnd,{prefix}EndDT,dayEnd)",
+        f"{prefix}ClipEnd,IF({prefix}ClipEndDay<endDT,{prefix}ClipEndDay,endDT)",
+        f"{prefix}ClipStartDay,IF({prefix}StartDT>dayStart,{prefix}StartDT,dayStart)",
+        f"{prefix}ClipStart,IF({prefix}ClipStartDay>startDT,{prefix}ClipStartDay,startDT)",
+        f"{prefix}RawOverlap,IF(({prefix}StartRaw=\"\")+({prefix}EndRaw=\"\")+(baseOverlap=0),0,{prefix}ClipEnd-{prefix}ClipStart)",
+        f"{prefix}Overlap,IF({prefix}RawOverlap<TIME(0,0,1),0,{prefix}RawOverlap/TIME(0,30,0))",
+    ]
+
+
+def weekly_scheduled_formula(date_cell: str) -> str:
+    assignments = [
+        f"dayStart,{date_cell}",
+        f"dayEnd,{date_cell}+1",
+        "id,tblScheduleData[EmployeeID]",
+        "opDate,tblScheduleData[OperationalDate]",
+        "rawStart,tblScheduleData[ShiftStart]",
+        "rawEnd,tblScheduleData[ShiftEnd]",
+        "baseCode,TRIM(tblScheduleData[ActivityCode])",
+        "adhoc1Code,TRIM(tblScheduleData[Adhoc1Code])",
+        "adhoc2Code,TRIM(tblScheduleData[Adhoc2Code])",
+        "adhoc3Code,TRIM(tblScheduleData[Adhoc3Code])",
+        "startDT,rawStart+(INT(rawStart)=0)*opDate",
+        "endBase,rawEnd+(INT(rawEnd)=0)*opDate",
+        "endDT,endBase+(endBase<=startDT)",
+        "baseRawOverlap,IF(endDT<dayEnd,endDT,dayEnd)-IF(startDT>dayStart,startDT,dayStart)",
+        "baseOverlap,IF(baseRawOverlap<TIME(0,0,1),0,baseRawOverlap/TIME(0,30,0))",
+        "baseCount,IFERROR(SUMIF(tblActivityCodes[Code],baseCode,tblActivityCodes[NumericValue]),0)",
+        'breakCount,IFERROR(SUMIF(tblActivityCodes[Code],"Brk",tblActivityCodes[NumericValue]),0)',
+        'lunchCount,IFERROR(SUMIF(tblActivityCodes[Code],"Lch",tblActivityCodes[NumericValue]),0)',
+        "adhoc1Count,IFERROR(SUMIF(tblActivityCodes[Code],adhoc1Code,tblActivityCodes[NumericValue]),0)",
+        "adhoc2Count,IFERROR(SUMIF(tblActivityCodes[Code],adhoc2Code,tblActivityCodes[NumericValue]),0)",
+        "adhoc3Count,IFERROR(SUMIF(tblActivityCodes[Code],adhoc3Code,tblActivityCodes[NumericValue]),0)",
+        *weekly_window_bindings("break1", "Break1Start", "Break1End"),
+        *weekly_window_bindings("break2", "Break2Start", "Break2End"),
+        *weekly_window_bindings("lunch", "LunchStart", "LunchEnd"),
+        *weekly_window_bindings("adhoc1", "Adhoc1Start", "Adhoc1End"),
+        *weekly_window_bindings("adhoc2", "Adhoc2Start", "Adhoc2End"),
+        *weekly_window_bindings("adhoc3", "Adhoc3Start", "Adhoc3End"),
+        'rowActive,(id<>"")*(opDate<>"")*(rawStart<>"")*(rawEnd<>"")*(rawStart<>rawEnd)',
+        "coverage,baseOverlap*baseCount+break1Overlap*(breakCount-baseCount)+break2Overlap*(breakCount-baseCount)+lunchOverlap*(lunchCount-baseCount)+adhoc1Overlap*(adhoc1Code<>\"\")*(adhoc1Count-baseCount)+adhoc2Overlap*(adhoc2Code<>\"\")*(adhoc2Count-baseCount)+adhoc3Overlap*(adhoc3Code<>\"\")*(adhoc3Count-baseCount)",
+    ]
+    return (
+        "=LET("
+        + ",".join(assignments)
+        + ",ROUND(SUMPRODUCT(rowActive*IF(coverage<0,0,coverage)),2))"
+    )
+
+
 def populate_schedule_matrix(wb: Workbook) -> None:
     ws = wb["Schedule_Matrix"]
     calc = wb["Calc_Engine"]
@@ -479,26 +536,56 @@ def populate_schedule_matrix(wb: Workbook) -> None:
 
 def populate_summary_dashboard(wb: Workbook) -> None:
     ws = wb["Summary_Dashboard"]
-    ws.append(["Interval", "Scheduled Productive", "Required", "Over/Under"])
+    ws["A1"] = "Weekly Staffing Summary"
+    ws["B1"] = f"={SELECTED_DATE_REF}-WEEKDAY({SELECTED_DATE_REF},2)+1"
+    ws["A2"] = "Selected Date"
+    ws["B2"] = f"={SELECTED_DATE_REF}"
+    weekly_headers = ["Date", "Day", "Scheduled Productive", "Required", "Over/Under"]
+    for column_index, header in enumerate(weekly_headers, start=1):
+        ws.cell(row=3, column=column_index, value=header)
+    for row in range(4, 11):
+        previous_row = row - 1
+        ws.cell(row=row, column=1, value="=$B$1" if row == 4 else f"=A{previous_row}+1")
+        ws.cell(row=row, column=2, value=f'=TEXT(A{row},"ddd")')
+        ws.cell(row=row, column=3, value=weekly_scheduled_formula(f"A{row}"))
+        ws.cell(row=row, column=4, value=f"=SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],A{row})")
+        ws.cell(row=row, column=5, value=f'=IF(D{row}="","",ROUND(C{row}-D{row},2))')
+
+    ws["A13"] = "Interval"
+    ws["B13"] = "Scheduled Productive"
+    ws["C13"] = "Required"
+    ws["D13"] = "Over/Under"
     matrix = wb["Schedule_Matrix"]
-    for index, column in enumerate(range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1), start=2):
+    for index, column in enumerate(range(INTERVAL_START_COLUMN, INTERVAL_END_COLUMN + 1), start=14):
         column_letter = matrix.cell(row=1, column=column).column_letter
         ws.cell(row=index, column=1, value=f"=Schedule_Matrix!{column_letter}$1")
         ws.cell(row=index, column=2, value=f"=Schedule_Matrix!{column_letter}${SUMMARY_SCHEDULED_ROW}")
         ws.cell(row=index, column=3, value=f"=Schedule_Matrix!{column_letter}${SUMMARY_REQUIRED_ROW}")
         ws.cell(row=index, column=4, value=f"=Schedule_Matrix!{column_letter}${SUMMARY_VARIANCE_ROW}")
 
-    chart = LineChart()
-    chart.title = "Selected-Day Net Staffing Variance"
-    chart.y_axis.title = "Agents"
-    chart.x_axis.title = "Interval"
-    chart.height = 8
-    chart.width = 24
-    data = Reference(ws, min_col=4, min_row=1, max_row=49)
-    categories = Reference(ws, min_col=1, min_row=2, max_row=49)
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(categories)
-    ws.add_chart(chart, "F2")
+    weekly_chart = BarChart()
+    weekly_chart.title = "Weekly Scheduled vs Required"
+    weekly_chart.y_axis.title = "Agent half-hour units"
+    weekly_chart.x_axis.title = "Day"
+    weekly_chart.height = 8
+    weekly_chart.width = 18
+    weekly_data = Reference(ws, min_col=3, min_row=3, max_col=4, max_row=10)
+    weekly_categories = Reference(ws, min_col=2, min_row=4, max_row=10)
+    weekly_chart.add_data(weekly_data, titles_from_data=True)
+    weekly_chart.set_categories(weekly_categories)
+    ws.add_chart(weekly_chart, "G2")
+
+    intraday_chart = LineChart()
+    intraday_chart.title = "Selected-Day Intraday Staffing"
+    intraday_chart.y_axis.title = "Agents"
+    intraday_chart.x_axis.title = "Interval"
+    intraday_chart.height = 9
+    intraday_chart.width = 24
+    intraday_data = Reference(ws, min_col=2, min_row=13, max_col=4, max_row=61)
+    intraday_categories = Reference(ws, min_col=1, min_row=14, max_row=61)
+    intraday_chart.add_data(intraday_data, titles_from_data=True)
+    intraday_chart.set_categories(intraday_categories)
+    ws.add_chart(intraday_chart, "G20")
 
 
 def add_conditional_formatting(ws) -> None:
@@ -690,6 +777,7 @@ def format_workbook(wb: Workbook) -> None:
         "Staffing_Requirements": "A2",
         "Schedule_Data": "A2",
         "Schedule_Matrix": "H2",
+        "Summary_Dashboard": "A4",
         "TestCases": "A2",
     }
     for ws in wb.worksheets:
@@ -736,7 +824,22 @@ def format_workbook(wb: Workbook) -> None:
             calc.cell(row=row, column=column).number_format = "0.00"
         for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
             calc.cell(row=row, column=column).number_format = "0.00"
-    for row in range(2, 50):
+    dashboard.column_dimensions["A"].width = 16
+    dashboard.column_dimensions["B"].width = 14
+    dashboard.column_dimensions["C"].width = 22
+    dashboard.column_dimensions["D"].width = 14
+    dashboard.column_dimensions["E"].width = 14
+    dashboard["A1"].font = Font(bold=True, size=14)
+    for row in [3, 13]:
+        for cell in dashboard[row]:
+            cell.font = Font(bold=True)
+    for coordinate in ["B1", "B2"]:
+        dashboard[coordinate].number_format = "yyyy-mm-dd"
+    for row in range(4, 11):
+        dashboard.cell(row=row, column=1).number_format = "yyyy-mm-dd"
+        for column in range(3, 6):
+            dashboard.cell(row=row, column=column).number_format = "0.00"
+    for row in range(14, 62):
         dashboard.cell(row=row, column=1).number_format = "hh:mm"
         for column in range(2, 5):
             dashboard.cell(row=row, column=column).number_format = "0.00"

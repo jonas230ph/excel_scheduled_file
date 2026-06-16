@@ -19,6 +19,7 @@ from scripts.build_wfm_workbook import (
     schedule_validation_formula,
     selected_schedule_formula,
     selected_day_variance_formula,
+    weekly_scheduled_formula,
 )
 
 
@@ -186,6 +187,7 @@ class IntervalAggregationTests(unittest.TestCase):
         formulas = [
             matrix_visible_formula(8, "X"),
             calc_coverage_formula(8, "X"),
+            weekly_scheduled_formula("A4"),
         ]
 
         for formula in formulas:
@@ -193,6 +195,23 @@ class IntervalAggregationTests(unittest.TestCase):
                 self.assertLess(len(formula), 8192)
                 for volatile_function in ["OFFSET(", "INDIRECT(", "TODAY(", "NOW(", "RAND(", "RANDBETWEEN("]:
                     self.assertNotIn(volatile_function, formula.upper())
+
+    def test_weekly_dashboard_formula_sums_break_lunch_and_adhoc_adjusted_coverage(self) -> None:
+        formula = weekly_scheduled_formula("A4")
+
+        self.assertIn("tblScheduleData[EmployeeID]", formula)
+        self.assertIn("tblScheduleData[OperationalDate]", formula)
+        self.assertIn("tblActivityCodes[NumericValue]", formula)
+        self.assertIn("SUMPRODUCT(rowActive*IF(coverage<0,0,coverage))", formula)
+        for field in [
+            "Break1Start",
+            "Break2Start",
+            "LunchStart",
+            "Adhoc1Code",
+            "Adhoc2Code",
+            "Adhoc3Code",
+        ]:
+            self.assertIn(field, formula)
 
     def test_generated_exception_formulas_ignore_boundary_precision_noise(self) -> None:
         visible_formula = matrix_visible_formula(8, "X")

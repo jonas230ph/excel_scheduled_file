@@ -49,7 +49,8 @@ SCHEDULE_HEADERS = [
 ]
 MATRIX_HEADERS = ["EmployeeID", "Name", "ContractualHours", "CurrentShift", "TargetDaySelect", "ShiftStart", "ShiftEnd"]
 TEST_HEADERS = ["TestID", "Scenario", "Input", "Expected", "Actual", "Pass", "Requirement", "Notes"]
-DASHBOARD_HEADERS = ["Interval", "Scheduled Productive", "Required", "Over/Under"]
+WEEKLY_DASHBOARD_HEADERS = ["Date", "Day", "Scheduled Productive", "Required", "Over/Under"]
+INTRADAY_DASHBOARD_HEADERS = ["Interval", "Scheduled Productive", "Required", "Over/Under"]
 
 
 def row_values(ws, row: int, start_col: int, end_col: int) -> list:
@@ -107,8 +108,10 @@ def assert_config(ws) -> None:
 
 def assert_requirements(ws) -> None:
     assert row_values(ws, 1, 1, 3) == REQUIREMENT_HEADERS
-    requirement_rows = [row for row in range(2, 50) if ws.cell(row=row, column=1).value]
-    assert len(requirement_rows) == 48, f"Expected 48 requirement rows, found {len(requirement_rows)}"
+    requirement_rows = [row for row in range(2, 338) if ws.cell(row=row, column=1).value]
+    assert len(requirement_rows) == 336, f"Expected 336 weekly requirement rows, found {len(requirement_rows)}"
+    requirement_dates = {ws.cell(row=row, column=1).value for row in requirement_rows}
+    assert len(requirement_dates) == 7, f"Expected 7 requirement dates, found {len(requirement_dates)}"
 
 
 def assert_schedule_data(ws) -> None:
@@ -254,12 +257,25 @@ def assert_test_cases(ws) -> None:
 
 
 def assert_summary_dashboard(ws) -> None:
-    assert row_values(ws, 1, 1, 4) == DASHBOARD_HEADERS
-    assert ws["A2"].value == "=Schedule_Matrix!H$1"
-    assert ws["B2"].value == "=Schedule_Matrix!H$260"
-    assert ws["C2"].value == "=Schedule_Matrix!H$261"
-    assert ws["D2"].value == "=Schedule_Matrix!H$262"
-    assert len(ws._charts) == 1, "Summary_Dashboard must contain one net staffing chart"
+    assert ws["A1"].value == "Weekly Staffing Summary"
+    assert ws["B1"].value == "=Schedule_Matrix!$E$2-WEEKDAY(Schedule_Matrix!$E$2,2)+1"
+    assert ws["A2"].value == "Selected Date"
+    assert ws["B2"].value == "=Schedule_Matrix!$E$2"
+    assert row_values(ws, 3, 1, 5) == WEEKLY_DASHBOARD_HEADERS
+    assert ws["A4"].value == "=$B$1"
+    assert ws["A5"].value == "=A4+1"
+    assert ws["B4"].value == '=TEXT(A4,"ddd")'
+    assert "SUMPRODUCT(rowActive*IF(coverage<0,0,coverage))" in ws["C4"].value
+    for field in ["Break1Start", "Break2Start", "LunchStart", "Adhoc1Code", "Adhoc2Code", "Adhoc3Code"]:
+        assert field in ws["C4"].value, f"Weekly formula missing {field}"
+    assert ws["D4"].value == "=SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],A4)"
+    assert ws["E4"].value == '=IF(D4="","",ROUND(C4-D4,2))'
+    assert row_values(ws, 13, 1, 4) == INTRADAY_DASHBOARD_HEADERS
+    assert ws["A14"].value == "=Schedule_Matrix!H$1"
+    assert ws["B14"].value == "=Schedule_Matrix!H$260"
+    assert ws["C14"].value == "=Schedule_Matrix!H$261"
+    assert ws["D14"].value == "=Schedule_Matrix!H$262"
+    assert len(ws._charts) == 2, "Summary_Dashboard must contain weekly and intraday charts"
 
 
 def main() -> None:

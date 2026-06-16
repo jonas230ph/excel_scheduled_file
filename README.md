@@ -18,7 +18,7 @@ Phase 1 through Phase 5 are implemented:
 - Live `Schedule_Matrix` grid with interval formulas from `00:00` through `23:30`.
 - Editable break, lunch, and ad hoc windows in `Schedule_Data`, overlaid into the daily matrix.
 - Scheduled productive, required, and over/under summary rows.
-- `Summary_Dashboard` source formulas and net staffing variance chart.
+- `Summary_Dashboard` weekly staffing summary with selected-day intraday staffing chart.
 - Visible validation states for invalid activity codes, zero-length shifts, duplicate rows, blank selected date, and missing requirements.
 - Conditional formatting for productive, nonproductive, under, exact, over, invalid, duplicate, missing-date, and missing-requirement states.
 - Workbook-native `TestCases` formulas with expected-vs-actual checks and an overall pass/fail status.
@@ -35,7 +35,7 @@ Deferred V2 work remains out of scope for this MVP: forecasting, imports, optimi
 | `Schedule_Data` | Normalized schedule records that feed the daily matrix. |
 | `Calc_Engine` | Hidden formula layer for selected-day filtering and interval coverage math. |
 | `Schedule_Matrix` | Main planner view with metadata columns and 48 interval columns. |
-| `Summary_Dashboard` | Chart-ready interval summary for selected-day net staffing variance. |
+| `Summary_Dashboard` | Weekly staffing summary plus selected-day interval charting. |
 | `TestCases` | Workbook-native expected-vs-actual checks and overall pass/fail status. |
 
 ## Key Sheet Anchors
@@ -92,7 +92,7 @@ Activity behavior is configured in `Config_Settings`, not hardcoded into the vis
 9. Return to `Schedule_Matrix`.
 10. Review the interval grid from `H:BC`.
 11. Review scheduled productive, required, and over/under rows at `H260:BC262`.
-12. Open `Summary_Dashboard` to inspect the selected-day net staffing variance chart.
+12. Open `Summary_Dashboard` to inspect weekly scheduled vs required staffing and the selected-day intraday staffing chart.
 
 ## Step-by-Step: Regenerate the Workbook
 
@@ -197,6 +197,8 @@ git@github.com:jonas230ph/excel_scheduled_file.git
 - The visible matrix displays activity codes for intervals where a schedule overlaps the interval.
 - The hidden `Calc_Engine` converts each row/interval into numeric staffed coverage.
 - The selected-day row filter includes any schedule whose normalized shift window overlaps the selected day, including previous-day overnight carry-in.
+- The dashboard week starts on Monday based on the selected date in `Schedule_Matrix!E2`.
+- Weekly dashboard totals use the normalized `Schedule_Data` rows directly, so break, lunch, ad hoc, partial-shift, and overnight rules are reflected in weekly productivity.
 - Break, lunch, and ad hoc windows are edited in `Schedule_Data` and carried through hidden helper columns `Schedule_Matrix!BD:BS`.
 - `Schedule_Matrix!H:BC` remains the 48-column interval grid. Breaks and lunch display as `BRK` and `LCH`; ad hoc windows display their configured activity code.
 - Break/lunch/ad hoc windows replace the base productive coverage for their overlap minutes, so a 15-minute break inside a 30-minute interval subtracts `0.5` staffed coverage.

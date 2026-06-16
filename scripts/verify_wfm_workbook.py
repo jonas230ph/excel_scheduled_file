@@ -265,9 +265,11 @@ def assert_summary_dashboard(ws) -> None:
     assert ws["A4"].value == "=$B$1"
     assert ws["A5"].value == "=A4+1"
     assert ws["B4"].value == '=TEXT(A4,"ddd")'
-    assert "SUMPRODUCT(rowActive*IF(coverage<0,0,coverage))" in ws["C4"].value
-    for field in ["Break1Start", "Break2Start", "LunchStart", "Adhoc1Code", "Adhoc2Code", "Adhoc3Code"]:
-        assert field in ws["C4"].value, f"Weekly formula missing {field}"
+    assert ws["C4"].value == '=IF(A4=Schedule_Matrix!$E$2,ROUND(SUM(Schedule_Matrix!$H$260:$BC$260),2),0)'
+    assert "Schedule_Matrix!$H$260:$BC$260" in ws["C4"].value
+    assert "SUMIF(tblActivityCodes[Code],baseCode" not in ws["C4"].value
+    assert "SUMPRODUCT(" not in ws["C4"].value
+    assert "MMULT(" not in ws["C4"].value
     assert ws["D4"].value == "=SUMIFS(tblRequirements[RequiredHeadcount],tblRequirements[OperationalDate],A4)"
     assert ws["E4"].value == '=IF(D4="","",ROUND(C4-D4,2))'
     assert row_values(ws, 13, 1, 4) == INTRADAY_DASHBOARD_HEADERS

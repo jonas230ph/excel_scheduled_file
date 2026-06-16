@@ -406,60 +406,10 @@ def selected_schedule_formula(field_name: str, row: int) -> str:
     )
 
 
-def weekly_window_bindings(prefix: str, start_field: str, end_field: str) -> list[str]:
-    return [
-        f"{prefix}StartRaw,tblScheduleData[{start_field}]",
-        f"{prefix}EndRaw,tblScheduleData[{end_field}]",
-        f"{prefix}StartBase,IF({prefix}StartRaw=\"\",0,IF(INT({prefix}StartRaw)>0,{prefix}StartRaw,opDate+MOD({prefix}StartRaw,1)))",
-        f"{prefix}StartDT,IF({prefix}StartRaw=\"\",0,{prefix}StartBase+({prefix}StartBase<startDT))",
-        f"{prefix}EndBase,IF({prefix}EndRaw=\"\",0,IF(INT({prefix}EndRaw)>0,{prefix}EndRaw,opDate+MOD({prefix}EndRaw,1)))",
-        f"{prefix}EndAdjusted,IF({prefix}EndRaw=\"\",0,{prefix}EndBase+({prefix}EndBase<startDT))",
-        f"{prefix}EndDT,IF(({prefix}StartRaw=\"\")+({prefix}EndRaw=\"\"),0,IF({prefix}EndAdjusted<={prefix}StartDT,{prefix}EndAdjusted+1,{prefix}EndAdjusted))",
-        f"{prefix}ClipEndDay,IF({prefix}EndDT<dayEnd,{prefix}EndDT,dayEnd)",
-        f"{prefix}ClipEnd,IF({prefix}ClipEndDay<endDT,{prefix}ClipEndDay,endDT)",
-        f"{prefix}ClipStartDay,IF({prefix}StartDT>dayStart,{prefix}StartDT,dayStart)",
-        f"{prefix}ClipStart,IF({prefix}ClipStartDay>startDT,{prefix}ClipStartDay,startDT)",
-        f"{prefix}RawOverlap,IF(({prefix}StartRaw=\"\")+({prefix}EndRaw=\"\")+(baseOverlap=0),0,{prefix}ClipEnd-{prefix}ClipStart)",
-        f"{prefix}Overlap,IF({prefix}RawOverlap<TIME(0,0,1),0,{prefix}RawOverlap/TIME(0,30,0))",
-    ]
-
-
 def weekly_scheduled_formula(date_cell: str) -> str:
-    assignments = [
-        f"dayStart,{date_cell}",
-        f"dayEnd,{date_cell}+1",
-        "id,tblScheduleData[EmployeeID]",
-        "opDate,tblScheduleData[OperationalDate]",
-        "rawStart,tblScheduleData[ShiftStart]",
-        "rawEnd,tblScheduleData[ShiftEnd]",
-        "baseCode,TRIM(tblScheduleData[ActivityCode])",
-        "adhoc1Code,TRIM(tblScheduleData[Adhoc1Code])",
-        "adhoc2Code,TRIM(tblScheduleData[Adhoc2Code])",
-        "adhoc3Code,TRIM(tblScheduleData[Adhoc3Code])",
-        "startDT,rawStart+(INT(rawStart)=0)*opDate",
-        "endBase,rawEnd+(INT(rawEnd)=0)*opDate",
-        "endDT,endBase+(endBase<=startDT)",
-        "baseRawOverlap,IF(endDT<dayEnd,endDT,dayEnd)-IF(startDT>dayStart,startDT,dayStart)",
-        "baseOverlap,IF(baseRawOverlap<TIME(0,0,1),0,baseRawOverlap/TIME(0,30,0))",
-        "baseCount,IFERROR(SUMIF(tblActivityCodes[Code],baseCode,tblActivityCodes[NumericValue]),0)",
-        'breakCount,IFERROR(SUMIF(tblActivityCodes[Code],"Brk",tblActivityCodes[NumericValue]),0)',
-        'lunchCount,IFERROR(SUMIF(tblActivityCodes[Code],"Lch",tblActivityCodes[NumericValue]),0)',
-        "adhoc1Count,IFERROR(SUMIF(tblActivityCodes[Code],adhoc1Code,tblActivityCodes[NumericValue]),0)",
-        "adhoc2Count,IFERROR(SUMIF(tblActivityCodes[Code],adhoc2Code,tblActivityCodes[NumericValue]),0)",
-        "adhoc3Count,IFERROR(SUMIF(tblActivityCodes[Code],adhoc3Code,tblActivityCodes[NumericValue]),0)",
-        *weekly_window_bindings("break1", "Break1Start", "Break1End"),
-        *weekly_window_bindings("break2", "Break2Start", "Break2End"),
-        *weekly_window_bindings("lunch", "LunchStart", "LunchEnd"),
-        *weekly_window_bindings("adhoc1", "Adhoc1Start", "Adhoc1End"),
-        *weekly_window_bindings("adhoc2", "Adhoc2Start", "Adhoc2End"),
-        *weekly_window_bindings("adhoc3", "Adhoc3Start", "Adhoc3End"),
-        'rowActive,(id<>"")*(opDate<>"")*(rawStart<>"")*(rawEnd<>"")*(rawStart<>rawEnd)',
-        "coverage,baseOverlap*baseCount+break1Overlap*(breakCount-baseCount)+break2Overlap*(breakCount-baseCount)+lunchOverlap*(lunchCount-baseCount)+adhoc1Overlap*(adhoc1Code<>\"\")*(adhoc1Count-baseCount)+adhoc2Overlap*(adhoc2Code<>\"\")*(adhoc2Count-baseCount)+adhoc3Overlap*(adhoc3Code<>\"\")*(adhoc3Count-baseCount)",
-    ]
     return (
-        "=LET("
-        + ",".join(assignments)
-        + ",ROUND(SUMPRODUCT(rowActive*IF(coverage<0,0,coverage)),2))"
+        f'=IF({date_cell}={SELECTED_DATE_REF},'
+        f"ROUND(SUM(Schedule_Matrix!$H${SUMMARY_SCHEDULED_ROW}:$BC${SUMMARY_SCHEDULED_ROW}),2),0)"
     )
 
 

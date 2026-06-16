@@ -198,7 +198,7 @@ git@github.com:jonas230ph/excel_scheduled_file.git
 - The hidden `Calc_Engine` converts each row/interval into numeric staffed coverage.
 - The selected-day row filter includes any schedule whose normalized shift window overlaps the selected day, including previous-day overnight carry-in.
 - The dashboard week starts on Monday based on the selected date in `Schedule_Matrix!E2`.
-- Weekly dashboard totals use the normalized `Schedule_Data` rows directly, so break, lunch, ad hoc, partial-shift, and overnight rules are reflected in weekly productivity.
+- The weekly dashboard's selected-date row uses the verified `Schedule_Matrix` daily total, so break, lunch, ad hoc, partial-shift, and overnight rules are reflected in the visible daily productivity number.
 - Break, lunch, and ad hoc windows are edited in `Schedule_Data` and carried through hidden helper columns `Schedule_Matrix!BD:BS`.
 - `Schedule_Matrix!H:BC` remains the 48-column interval grid. Breaks and lunch display as `BRK` and `LCH`; ad hoc windows display their configured activity code.
 - Break/lunch/ad hoc windows replace the base productive coverage for their overlap minutes, so a 15-minute break inside a 30-minute interval subtracts `0.5` staffed coverage.

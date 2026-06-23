@@ -25,6 +25,11 @@ class GeneratedWorkbookOutputTests(unittest.TestCase):
         wb = load_workbook(path, data_only=False)
         self.assertEqual(wb.sheetnames, SHEETS)
         self.assertEqual(wb["Calc_Engine"].sheet_state, "hidden")
+        if engine == "excel":
+            self.assertEqual(wb.calculation.calcMode, "auto")
+            self.assertEqual(wb.calculation.calcId, 0)
+            self.assertTrue(wb.calculation.fullCalcOnLoad)
+            self.assertTrue(wb.calculation.forceFullCalc)
 
         calc_formula = wb["Calc_Engine"]["A8"].value
         self.assertIsInstance(calc_formula, str)

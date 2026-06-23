@@ -118,6 +118,10 @@ def schedule_helper_columns() -> dict[str, str]:
 
 def setup_workbook() -> Workbook:
     wb = Workbook()
+    wb.calculation.calcMode = "auto"
+    wb.calculation.calcId = 0
+    wb.calculation.fullCalcOnLoad = True
+    wb.calculation.forceFullCalc = True
     default = wb.active
     wb.remove(default)
     for sheet_name in SHEETS:

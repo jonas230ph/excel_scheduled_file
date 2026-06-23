@@ -49,6 +49,34 @@ SCHEDULE_EXTRA_FIELDS = [
 ]
 SCHEDULE_HELPER_END_COLUMN = SCHEDULE_HELPER_START_COLUMN + len(SCHEDULE_EXTRA_FIELDS) - 1
 SCHEDULE_EXTRA_TIME_COLUMNS = [12, 13, 14, 15, 16, 17, 19, 20, 22, 23, 25, 26]
+SCHEDULE_DATA_FIELD_COLUMNS = {
+    "EmployeeID": "A",
+    "Name": "B",
+    "OperationalDate": "C",
+    "ShiftStart": "D",
+    "ShiftEnd": "E",
+    "ActivityCode": "F",
+    "ContractualHours": "G",
+    "CurrentShift": "H",
+    "Notes": "I",
+    "ValidationState": "J",
+    "SourceRowID": "K",
+    "Break1Start": "L",
+    "Break1End": "M",
+    "Break2Start": "N",
+    "Break2End": "O",
+    "LunchStart": "P",
+    "LunchEnd": "Q",
+    "Adhoc1Code": "R",
+    "Adhoc1Start": "S",
+    "Adhoc1End": "T",
+    "Adhoc2Code": "U",
+    "Adhoc2Start": "V",
+    "Adhoc2End": "W",
+    "Adhoc3Code": "X",
+    "Adhoc3Start": "Y",
+    "Adhoc3End": "Z",
+}
 SHEETS = [
     "Config_Settings",
     "Staffing_Requirements",
@@ -391,25 +419,30 @@ def selected_day_variance_formula(column_letter: str, scheduled_row: int, requir
 
 def selected_schedule_formula(field_name: str, row: int, engine: str = "excel") -> str:
     relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
-    row_index = f"(ROW(tblScheduleData[{field_name}])-ROW(INDEX(tblScheduleData[{field_name}],1,1))+1)"
-    start_dt = "(tblScheduleData[ShiftStart]+(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate])"
-    end_base = "(tblScheduleData[ShiftEnd]+(INT(tblScheduleData[ShiftEnd])=0)*tblScheduleData[OperationalDate])"
+    data_col = SCHEDULE_DATA_FIELD_COLUMNS[field_name]
+    field_range = f"Schedule_Data!${data_col}$2:${data_col}$1000"
+    employee_range = "Schedule_Data!$A$2:$A$1000"
+    op_date_range = "Schedule_Data!$C$2:$C$1000"
+    shift_start_range = "Schedule_Data!$D$2:$D$1000"
+    shift_end_range = "Schedule_Data!$E$2:$E$1000"
+    start_dt = f"({shift_start_range}+(INT({shift_start_range})=0)*{op_date_range})"
+    end_base = f"({shift_end_range}+(INT({shift_end_range})=0)*{op_date_range})"
     end_dt = f"({end_base}+({end_base}<={start_dt}))"
     criteria = (
-        '(tblScheduleData[EmployeeID]<>"")*(tblScheduleData[ShiftStart]<>"")*'
-        "(tblScheduleData[ShiftEnd]<>\"\")*(tblScheduleData[OperationalDate]<>\"\")*"
+        f'({employee_range}<>"")*({shift_start_range}<>"")*'
+        f'({shift_end_range}<>"")*({op_date_range}<>"")*'
         f"({SELECTED_DATE_REF}<>\"\")*"
         f"({start_dt}<{SELECTED_DATE_REF}+1)*"
         f"({end_dt}>{SELECTED_DATE_REF})"
     )
     if engine == "google":
         return (
-            f'=IFERROR(INDEX(FILTER(tblScheduleData[{field_name}],{criteria}),'
+            f'=IFERROR(INDEX(FILTER({field_range},{criteria}),'
             f"{relative_index}),\"\")"
         )
     return (
-        f'=IFERROR(INDEX(tblScheduleData[{field_name}],'
-        f'AGGREGATE(15,6,{row_index}/({criteria}),{relative_index})),\"\")'
+        f'=IFERROR(INDEX({field_range},'
+        f'AGGREGATE(15,6,(ROW({field_range})-ROW(INDEX({field_range},1,1))+1)/({criteria}),{relative_index})),\"\")'
     )
 
 

@@ -155,15 +155,17 @@ class IntervalAggregationTests(unittest.TestCase):
     def test_selected_day_schedule_filter_includes_previous_day_overnight_overlap(self) -> None:
         formula = selected_schedule_formula("EmployeeID", 8)
 
+        self.assertIn("Schedule_Data!$A$2:$A$1000", formula)
+        self.assertIn("Schedule_Data!$C$2:$C$1000", formula)
         self.assertNotIn("tblScheduleData[OperationalDate]=SelectedDate", formula)
         self.assertNotIn("SelectedDate", formula)
         self.assertNotIn("LET(", formula)
         self.assertIn("Schedule_Matrix!$E$2", formula)
-        self.assertIn("(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate]", formula)
-        self.assertIn("(INT(tblScheduleData[ShiftEnd])=0)*tblScheduleData[OperationalDate]", formula)
+        self.assertIn("(INT(Schedule_Data!$D$2:$D$1000)=0)*Schedule_Data!$C$2:$C$1000", formula)
+        self.assertIn("(INT(Schedule_Data!$E$2:$E$1000)=0)*Schedule_Data!$C$2:$C$1000", formula)
         self.assertIn("<Schedule_Matrix!$E$2+1", formula)
         self.assertIn(">Schedule_Matrix!$E$2", formula)
-        self.assertIn("tblScheduleData[EmployeeID]<>\"\"", formula)
+        self.assertIn("Schedule_Data!$A$2:$A$1000<>\"\"", formula)
 
     def test_visible_and_coverage_formulas_include_break_lunch_and_adhoc_windows(self) -> None:
         visible_formula = matrix_visible_formula(8, "X")
@@ -211,15 +213,16 @@ class IntervalAggregationTests(unittest.TestCase):
     def test_selected_schedule_formula_avoids_filter_on_calc_engine(self) -> None:
         formula = selected_schedule_formula("EmployeeID", 8)
 
-        self.assertTrue(formula.startswith("=IFERROR(INDEX(tblScheduleData[EmployeeID],AGGREGATE("))
+        self.assertTrue(formula.startswith("=IFERROR(INDEX(Schedule_Data!$A$2:$A$1000,AGGREGATE("))
         self.assertNotIn("FILTER(", formula)
         self.assertIn("AGGREGATE(15,6,", formula)
+        self.assertNotIn("tblScheduleData[", formula)
 
     def test_google_selected_schedule_formula_uses_filter(self) -> None:
         formula = selected_schedule_formula("EmployeeID", 8, "google")
 
-        self.assertTrue(formula.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[EmployeeID],"))
-        self.assertIn("FILTER(tblScheduleData[EmployeeID]", formula)
+        self.assertTrue(formula.startswith("=IFERROR(INDEX(FILTER(Schedule_Data!$A$2:$A$1000,"))
+        self.assertIn("FILTER(Schedule_Data!$A$2:$A$1000", formula)
         self.assertNotIn("AGGREGATE(", formula)
 
     def test_generated_exception_formulas_ignore_boundary_precision_noise(self) -> None:

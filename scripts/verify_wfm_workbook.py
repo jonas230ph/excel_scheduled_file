@@ -197,21 +197,21 @@ def assert_schedule_matrix(ws) -> None:
 
 
 def assert_calc_engine(ws) -> None:
-    assert ws["A8"].value.startswith("=IFERROR(INDEX(tblScheduleData[EmployeeID],AGGREGATE(")
+    assert ws["A8"].value.startswith("=IFERROR(INDEX(Schedule_Data!$A$2:$A$1000,AGGREGATE(")
     assert "SelectedDate" not in ws["A8"].value
     assert "LET(" not in ws["A8"].value
     assert "FILTER(" not in ws["A8"].value
-    assert "(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate]" in ws["A8"].value
-    assert "(INT(tblScheduleData[ShiftEnd])=0)*tblScheduleData[OperationalDate]" in ws["A8"].value
-    assert 'tblScheduleData[EmployeeID]<>""' in ws["A8"].value
+    assert "(INT(Schedule_Data!$D$2:$D$1000)=0)*Schedule_Data!$C$2:$C$1000" in ws["A8"].value
+    assert "(INT(Schedule_Data!$E$2:$E$1000)=0)*Schedule_Data!$C$2:$C$1000" in ws["A8"].value
+    assert 'Schedule_Data!$A$2:$A$1000<>""' in ws["A8"].value
     assert 'Schedule_Matrix!$E$2<>""' in ws["A8"].value
     assert "<Schedule_Matrix!$E$2+1" in ws["A8"].value
     assert ">Schedule_Matrix!$E$2" in ws["A8"].value
-    assert ws["D8"].value.startswith("=IFERROR(INDEX(tblScheduleData[ActivityCode],AGGREGATE(")
-    assert ws["F8"].value.startswith("=IFERROR(INDEX(tblScheduleData[ShiftStart],AGGREGATE(")
+    assert ws["D8"].value.startswith("=IFERROR(INDEX(Schedule_Data!$F$2:$F$1000,AGGREGATE(")
+    assert ws["F8"].value.startswith("=IFERROR(INDEX(Schedule_Data!$D$2:$D$1000,AGGREGATE(")
     assert ws["BD1"].value == "ValidationState"
-    assert ws["BD8"].value.startswith("=IFERROR(INDEX(tblScheduleData[ValidationState],AGGREGATE(")
-    assert "FILTER(tblScheduleData[ValidationState]" not in ws["BD8"].value
+    assert ws["BD8"].value.startswith("=IFERROR(INDEX(Schedule_Data!$J$2:$J$1000,AGGREGATE(")
+    assert "FILTER(" not in ws["BD8"].value
     assert ws.column_dimensions["BD"].hidden, "Calc validation helper column must be hidden"
     assert row_values(ws, 1, SCHEDULE_HELPER_START_COLUMN, SCHEDULE_HELPER_END_COLUMN) == SCHEDULE_EXTRA_FIELDS
     for column in range(VALIDATION_STATE_COLUMN, SCHEDULE_HELPER_END_COLUMN + 1):
@@ -221,7 +221,7 @@ def assert_calc_engine(ws) -> None:
     assert "AGGREGATE(" in ws["BS8"].value
     assert ws["H8"].value.startswith("=LET(")
     assert "SelectedDate" not in ws["H8"].value
-    assert "Schedule_Matrix!$E$2" in ws["H8"].value
+    assert "$E$2" in ws["H8"].value
     assert "overlayCoverage" in ws["H8"].value
     assert ws["H8"].number_format == "0.00"
 

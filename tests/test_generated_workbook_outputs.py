@@ -29,11 +29,11 @@ class GeneratedWorkbookOutputTests(unittest.TestCase):
         calc_formula = wb["Calc_Engine"]["A8"].value
         self.assertIsInstance(calc_formula, str)
         if engine == "excel":
-            self.assertTrue(calc_formula.startswith("=IFERROR(INDEX(tblScheduleData[EmployeeID],AGGREGATE("))
+            self.assertTrue(calc_formula.startswith("=IFERROR(INDEX(Schedule_Data!$A$2:$A$1000,AGGREGATE("))
             self.assertNotIn("FILTER(", calc_formula)
         else:
-            self.assertTrue(calc_formula.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[EmployeeID],"))
-            self.assertIn("FILTER(tblScheduleData[EmployeeID]", calc_formula)
+            self.assertTrue(calc_formula.startswith("=IFERROR(INDEX(FILTER(Schedule_Data!$A$2:$A$1000,"))
+            self.assertIn("FILTER(Schedule_Data!$A$2:$A$1000", calc_formula)
             self.assertNotIn("AGGREGATE(", calc_formula)
 
         formulas = 0

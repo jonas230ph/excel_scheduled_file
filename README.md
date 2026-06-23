@@ -2,10 +2,11 @@
 
 Editable Microsoft Excel workforce management scheduling workbook for daily interval staffing control. The workbook renders one selected operational day at a time, maps employee schedules across 48 half-hour intervals, and compares scheduled productive headcount against required staffing by interval.
 
-The generated workbook is located at:
+The generated workbooks are located at:
 
 ```text
 excel schedule/wfm_scheduling_matrix.xlsx
+excel schedule/wfm_scheduling_matrix_google.xlsx
 ```
 
 ## Current Scope
@@ -23,6 +24,7 @@ Phase 1 through Phase 5 are implemented:
 - Conditional formatting for productive, nonproductive, under, exact, over, invalid, duplicate, missing-date, and missing-requirement states.
 - Workbook-native `TestCases` formulas with expected-vs-actual checks and an overall pass/fail status.
 - Python verification tests for interval aggregation and workbook structure.
+- Separate Excel and Google Sheets workbook files so each engine gets formulas it handles cleanly.
 
 Deferred V2 work remains out of scope for this MVP: forecasting, imports, optimization, macros, integrations, and enterprise workflow controls.
 
@@ -75,7 +77,7 @@ Activity behavior is configured in `Config_Settings`, not hardcoded into the vis
 
 ## Step-by-Step: Use the Workbook
 
-1. Open `excel schedule/wfm_scheduling_matrix.xlsx` in Microsoft Excel or upload it to Google Sheets.
+1. Open `excel schedule/wfm_scheduling_matrix.xlsx` in Microsoft Excel.
 2. Go to `Schedule_Matrix`.
 3. Set the selected operational date in `Schedule_Matrix!E2`.
 4. Go to `Staffing_Requirements`.
@@ -93,6 +95,8 @@ Activity behavior is configured in `Config_Settings`, not hardcoded into the vis
 10. Review the interval grid from `H:BC`.
 11. Review scheduled productive, required, and over/under rows at `H260:BC262`.
 12. Open `Summary_Dashboard` to inspect weekly scheduled vs required staffing and the selected-day intraday staffing chart.
+
+For Google Sheets, open `excel schedule/wfm_scheduling_matrix_google.xlsx`.
 
 ## Step-by-Step: Regenerate the Workbook
 

@@ -16,7 +16,8 @@ from openpyxl.workbook.defined_name import DefinedName
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_PATH = ROOT / "excel schedule" / "wfm_scheduling_matrix.xlsx"
+EXCEL_OUTPUT_PATH = ROOT / "excel schedule" / "wfm_scheduling_matrix.xlsx"
+GOOGLE_OUTPUT_PATH = ROOT / "excel schedule" / "wfm_scheduling_matrix_google.xlsx"
 SAMPLE_DATE = date(2026, 6, 11)
 ROSTER_START_ROW = 8
 MAX_ROSTER_ROWS = 250
@@ -388,7 +389,7 @@ def selected_day_variance_formula(column_letter: str, scheduled_row: int, requir
     )
 
 
-def selected_schedule_formula(field_name: str, row: int) -> str:
+def selected_schedule_formula(field_name: str, row: int, engine: str = "excel") -> str:
     relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
     row_index = f"(ROW(tblScheduleData[{field_name}])-ROW(INDEX(tblScheduleData[{field_name}],1,1))+1)"
     start_dt = "(tblScheduleData[ShiftStart]+(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate])"
@@ -401,6 +402,11 @@ def selected_schedule_formula(field_name: str, row: int) -> str:
         f"({start_dt}<{SELECTED_DATE_REF}+1)*"
         f"({end_dt}>{SELECTED_DATE_REF})"
     )
+    if engine == "google":
+        return (
+            f'=IFERROR(INDEX(FILTER(tblScheduleData[{field_name}],{criteria}),'
+            f"{relative_index}),\"\")"
+        )
     return (
         f'=IFERROR(INDEX(tblScheduleData[{field_name}],'
         f'AGGREGATE(15,6,{row_index}/({criteria}),{relative_index})),\"\")'
@@ -414,7 +420,7 @@ def weekly_scheduled_formula(date_cell: str) -> str:
     )
 
 
-def populate_schedule_matrix(wb: Workbook) -> None:
+def populate_schedule_matrix(wb: Workbook, engine: str) -> None:
     ws = wb["Schedule_Matrix"]
     calc = wb["Calc_Engine"]
     headers = ["EmployeeID", "Name", "ContractualHours", "CurrentShift", "TargetDaySelect", "ShiftStart", "ShiftEnd"]
@@ -441,16 +447,16 @@ def populate_schedule_matrix(wb: Workbook) -> None:
     ws.cell(row=SUMMARY_VARIANCE_ROW, column=7, value="Over/Under")
 
     for row in range(ROSTER_START_ROW, ROSTER_END_ROW + 1):
-        calc.cell(row=row, column=1, value=selected_schedule_formula("EmployeeID", row))
-        calc.cell(row=row, column=2, value=selected_schedule_formula("Name", row))
-        calc.cell(row=row, column=3, value=selected_schedule_formula("ContractualHours", row))
-        calc.cell(row=row, column=4, value=selected_schedule_formula("ActivityCode", row))
+        calc.cell(row=row, column=1, value=selected_schedule_formula("EmployeeID", row, engine))
+        calc.cell(row=row, column=2, value=selected_schedule_formula("Name", row, engine))
+        calc.cell(row=row, column=3, value=selected_schedule_formula("ContractualHours", row, engine))
+        calc.cell(row=row, column=4, value=selected_schedule_formula("ActivityCode", row, engine))
         calc.cell(row=row, column=5, value=f'=IF(Calc_Engine!A{row}="","",{SELECTED_DATE_REF})')
-        calc.cell(row=row, column=6, value=selected_schedule_formula("ShiftStart", row))
-        calc.cell(row=row, column=7, value=selected_schedule_formula("ShiftEnd", row))
-        calc.cell(row=row, column=VALIDATION_STATE_COLUMN, value=selected_schedule_formula("ValidationState", row))
+        calc.cell(row=row, column=6, value=selected_schedule_formula("ShiftStart", row, engine))
+        calc.cell(row=row, column=7, value=selected_schedule_formula("ShiftEnd", row, engine))
+        calc.cell(row=row, column=VALIDATION_STATE_COLUMN, value=selected_schedule_formula("ValidationState", row, engine))
         for offset, field_name in enumerate(SCHEDULE_EXTRA_FIELDS):
-            calc.cell(row=row, column=SCHEDULE_HELPER_START_COLUMN + offset, value=selected_schedule_formula(field_name, row))
+            calc.cell(row=row, column=SCHEDULE_HELPER_START_COLUMN + offset, value=selected_schedule_formula(field_name, row, engine))
         for column in range(1, 8):
             ws.cell(row=row, column=column, value=f"=Calc_Engine!{ws.cell(row=row, column=column).coordinate}")
         ws.cell(row=row, column=VALIDATION_STATE_COLUMN, value=f"=Calc_Engine!{ws.cell(row=row, column=VALIDATION_STATE_COLUMN).coordinate}")
@@ -805,12 +811,12 @@ def format_workbook(wb: Workbook) -> None:
     calc.sheet_state = "hidden"
 
 
-def build() -> Workbook:
+def build(engine: str = "excel") -> Workbook:
     wb = setup_workbook()
     populate_config(wb["Config_Settings"])
     populate_requirements(wb["Staffing_Requirements"])
     populate_schedule_data(wb["Schedule_Data"])
-    populate_schedule_matrix(wb)
+    populate_schedule_matrix(wb, engine)
     populate_summary_dashboard(wb)
     populate_test_cases(wb["TestCases"])
     setup_names_and_validation(wb)
@@ -819,10 +825,11 @@ def build() -> Workbook:
 
 
 def main() -> None:
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    wb = build()
-    wb.save(OUTPUT_PATH)
-    print(f"Workbook written to {OUTPUT_PATH}")
+    EXCEL_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    build("excel").save(EXCEL_OUTPUT_PATH)
+    build("google").save(GOOGLE_OUTPUT_PATH)
+    print(f"Workbook written to {EXCEL_OUTPUT_PATH}")
+    print(f"Workbook written to {GOOGLE_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

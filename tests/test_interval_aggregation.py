@@ -215,6 +215,13 @@ class IntervalAggregationTests(unittest.TestCase):
         self.assertNotIn("FILTER(", formula)
         self.assertIn("AGGREGATE(15,6,", formula)
 
+    def test_google_selected_schedule_formula_uses_filter(self) -> None:
+        formula = selected_schedule_formula("EmployeeID", 8, "google")
+
+        self.assertTrue(formula.startswith("=IFERROR(INDEX(FILTER(tblScheduleData[EmployeeID],"))
+        self.assertIn("FILTER(tblScheduleData[EmployeeID]", formula)
+        self.assertNotIn("AGGREGATE(", formula)
+
     def test_generated_exception_formulas_ignore_boundary_precision_noise(self) -> None:
         visible_formula = matrix_visible_formula(8, "X")
         coverage_formula = calc_coverage_formula(8, "X")

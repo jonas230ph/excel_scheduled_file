@@ -390,19 +390,20 @@ def selected_day_variance_formula(column_letter: str, scheduled_row: int, requir
 
 def selected_schedule_formula(field_name: str, row: int) -> str:
     relative_index = f"ROWS($A${ROSTER_START_ROW}:A{row})"
+    row_index = f"(ROW(tblScheduleData[{field_name}])-ROW(INDEX(tblScheduleData[{field_name}],1,1))+1)"
     start_dt = "(tblScheduleData[ShiftStart]+(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate])"
     end_base = "(tblScheduleData[ShiftEnd]+(INT(tblScheduleData[ShiftEnd])=0)*tblScheduleData[OperationalDate])"
     end_dt = f"({end_base}+({end_base}<={start_dt}))"
-    return (
-        f'=IFERROR(INDEX(FILTER(tblScheduleData[{field_name}],'
-        '(tblScheduleData[EmployeeID]<>"")*'
-        '(tblScheduleData[ShiftStart]<>"")*'
-        '(tblScheduleData[ShiftEnd]<>"")*'
-        '(tblScheduleData[OperationalDate]<>"")*'
+    criteria = (
+        '(tblScheduleData[EmployeeID]<>"")*(tblScheduleData[ShiftStart]<>"")*'
+        "(tblScheduleData[ShiftEnd]<>\"\")*(tblScheduleData[OperationalDate]<>\"\")*"
         f"({SELECTED_DATE_REF}<>\"\")*"
         f"({start_dt}<{SELECTED_DATE_REF}+1)*"
         f"({end_dt}>{SELECTED_DATE_REF})"
-        f'),{relative_index}),\"\")'
+    )
+    return (
+        f'=IFERROR(INDEX(tblScheduleData[{field_name}],'
+        f'AGGREGATE(15,6,{row_index}/({criteria}),{relative_index})),\"\")'
     )
 
 

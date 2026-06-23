@@ -187,6 +187,7 @@ class IntervalAggregationTests(unittest.TestCase):
         formulas = [
             matrix_visible_formula(8, "X"),
             calc_coverage_formula(8, "X"),
+            selected_schedule_formula("EmployeeID", 8),
             weekly_scheduled_formula("A4"),
         ]
 
@@ -206,6 +207,13 @@ class IntervalAggregationTests(unittest.TestCase):
         self.assertIn("Schedule_Matrix!$H$260:$BC$260", formula)
         self.assertNotIn("SUMPRODUCT(", formula)
         self.assertNotIn("MMULT(", formula)
+
+    def test_selected_schedule_formula_avoids_filter_on_calc_engine(self) -> None:
+        formula = selected_schedule_formula("EmployeeID", 8)
+
+        self.assertTrue(formula.startswith("=IFERROR(INDEX(tblScheduleData[EmployeeID],AGGREGATE("))
+        self.assertNotIn("FILTER(", formula)
+        self.assertIn("AGGREGATE(15,6,", formula)
 
     def test_generated_exception_formulas_ignore_boundary_precision_noise(self) -> None:
         visible_formula = matrix_visible_formula(8, "X")

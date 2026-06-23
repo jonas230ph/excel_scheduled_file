@@ -197,28 +197,28 @@ def assert_schedule_matrix(ws) -> None:
 
 
 def assert_calc_engine(ws) -> None:
-    assert ws["A8"].value.startswith("=IFERROR(INDEX(FILTER(")
+    assert ws["A8"].value.startswith("=IFERROR(INDEX(tblScheduleData[EmployeeID],AGGREGATE(")
     assert "SelectedDate" not in ws["A8"].value
     assert "LET(" not in ws["A8"].value
-    assert "tblScheduleData[OperationalDate]=SelectedDate" not in ws["A8"].value
+    assert "FILTER(" not in ws["A8"].value
     assert "(INT(tblScheduleData[ShiftStart])=0)*tblScheduleData[OperationalDate]" in ws["A8"].value
     assert "(INT(tblScheduleData[ShiftEnd])=0)*tblScheduleData[OperationalDate]" in ws["A8"].value
     assert 'tblScheduleData[EmployeeID]<>""' in ws["A8"].value
     assert 'Schedule_Matrix!$E$2<>""' in ws["A8"].value
     assert "<Schedule_Matrix!$E$2+1" in ws["A8"].value
     assert ">Schedule_Matrix!$E$2" in ws["A8"].value
-    assert ws["D8"].value.startswith("=IFERROR(INDEX(FILTER(")
-    assert ws["F8"].value.startswith("=IFERROR(INDEX(FILTER(")
+    assert ws["D8"].value.startswith("=IFERROR(INDEX(tblScheduleData[ActivityCode],AGGREGATE(")
+    assert ws["F8"].value.startswith("=IFERROR(INDEX(tblScheduleData[ShiftStart],AGGREGATE(")
     assert ws["BD1"].value == "ValidationState"
-    assert ws["BD8"].value.startswith("=IFERROR(INDEX(FILTER(")
-    assert "FILTER(tblScheduleData[ValidationState]" in ws["BD8"].value
+    assert ws["BD8"].value.startswith("=IFERROR(INDEX(tblScheduleData[ValidationState],AGGREGATE(")
+    assert "FILTER(tblScheduleData[ValidationState]" not in ws["BD8"].value
     assert ws.column_dimensions["BD"].hidden, "Calc validation helper column must be hidden"
     assert row_values(ws, 1, SCHEDULE_HELPER_START_COLUMN, SCHEDULE_HELPER_END_COLUMN) == SCHEDULE_EXTRA_FIELDS
     for column in range(VALIDATION_STATE_COLUMN, SCHEDULE_HELPER_END_COLUMN + 1):
         letter = ws.cell(row=1, column=column).column_letter
         assert ws.column_dimensions[letter].hidden, f"Calc {letter} helper column must be hidden"
-    assert "FILTER(tblScheduleData[Break1Start]" in ws["BE8"].value
-    assert "FILTER(tblScheduleData[Adhoc3End]" in ws["BS8"].value
+    assert "AGGREGATE(" in ws["BE8"].value
+    assert "AGGREGATE(" in ws["BS8"].value
     assert ws["H8"].value.startswith("=LET(")
     assert "SelectedDate" not in ws["H8"].value
     assert "Schedule_Matrix!$E$2" in ws["H8"].value
